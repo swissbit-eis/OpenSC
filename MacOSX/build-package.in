@@ -14,6 +14,7 @@ test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
 
 export CC="clang -flto=thin"
+export OTHER_CFLAGS="-flto=thin"
 
 xcode_ver=$(xcodebuild -version | sed -En 's/Xcode[[:space:]](.*)/\1/p')
 base_ver="12.2"
@@ -106,6 +107,7 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 	./MacOSX/libtool-bundle ${BUILDPATH}/target/$PREFIX/lib/opensc-pkcs11.so ${BUILDPATH}/target/$PREFIX/lib
 fi
 
+unset CC
 
 if ! test -e NotificationProxy; then
 	git clone http://github.com/frankmorgner/NotificationProxy.git
