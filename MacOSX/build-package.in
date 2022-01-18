@@ -33,8 +33,8 @@ if ! pkg-config libcrypto --atleast-version=1.0.1; then
 			git clone --depth=1 https://github.com/openssl/openssl.git -b OpenSSL_1_1_1-stable
 		fi
 		cd openssl
-		make clean
 		MACHINE=x86_64 ./config no-shared --prefix=$PREFIX
+		make clean
 		make -j DESTDIR=$BUILDPATH/openssl_bin install_dev
 		if test -n "${BUILD_ARM}"; then
 			make clean
