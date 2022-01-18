@@ -13,6 +13,8 @@ set -ex
 test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
 
+export CC="clang -flto=thin"
+
 xcode_ver=$(xcodebuild -version | sed -En 's/Xcode[[:space:]](.*)/\1/p')
 base_ver="12.2"
 if [ $(echo -e $base_ver"\n"$xcode_ver | sort -V | head -1) == "$base_ver" ]; then
@@ -31,15 +33,13 @@ if ! pkg-config libcrypto --atleast-version=1.0.1; then
 			git clone --depth=1 https://github.com/openssl/openssl.git -b OpenSSL_1_1_1-stable
 		fi
 		cd openssl
-		MACHINE=x86_64 ./config no-shared --prefix=$PREFIX
 		make clean
-		make -j 4
-		make DESTDIR=$BUILDPATH/openssl_bin install_sw
+		MACHINE=x86_64 ./config no-shared --prefix=$PREFIX
+		make -j DESTDIR=$BUILDPATH/openssl_bin install_dev
 		if test -n "${BUILD_ARM}"; then
 			make clean
 			MACHINE=arm64 KERNEL_BITS=64 ./config no-shared --prefix=$PREFIX
-			make -j 4
-			make DESTDIR=$BUILDPATH/openssl_arm64 install_sw
+			make -j DESTDIR=$BUILDPATH/openssl_arm64 install_dev
 			lipo -create $BUILDPATH/openssl_arm64/$PREFIX/lib/libcrypto.a $BUILDPATH/openssl_bin/$PREFIX/lib/libcrypto.a -output libcrypto.a
 			lipo -create $BUILDPATH/openssl_arm64/$PREFIX/lib/libssl.a $BUILDPATH/openssl_bin/$PREFIX/lib/libssl.a -output libssl.a
 			mv libcrypto.a $BUILDPATH/openssl_bin/$PREFIX/lib/libcrypto.a
