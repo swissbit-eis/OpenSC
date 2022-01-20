@@ -7,7 +7,7 @@ V=libressl-3.4.2
 sudo apt-get remove -y openssl libssl-dev java8-runtime-headless default-jre-headless
 
 if [ ! -d "$V" ]; then
-	wget https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/$V.tar.gz
+	wget --no-check-certificate https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/$V.tar.gz
 	tar xzf $V.tar.gz
 fi
 pushd $V
