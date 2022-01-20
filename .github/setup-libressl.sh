@@ -2,14 +2,16 @@
 
 set -ex -o xtrace
 
+V=libressl-3.4.2
+
 sudo apt-get remove -y openssl libssl-dev java8-runtime-headless default-jre-headless
 
-if [ ! -d "portable" ]; then
-	git clone https://github.com/libressl-portable/portable
+if [ ! -d "$V" ]; then
+	wget https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/$V.tar.gz
+	tar xzf $V.tar.gz
 fi
-pushd portable
-git checkout OPENBSD_7_0
-./config --prefix=/usr/local linux-x86_64
+pushd $V
+./configure --prefix=/usr/local
 make -j $(nproc)
 sudo make install
 popd
