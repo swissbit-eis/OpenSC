@@ -2,7 +2,7 @@
 
 set -ex -o xtrace
 
-if [ "$1" == "ossl3" -o "$2" == "ossl3" ]; then
+if [ "$1" == "ossl3" -o "$2" == "ossl3" -o "$1" == "libressl" -o "$2" == "libressl" ]; then
 	export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig;
 else
 	export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig;
