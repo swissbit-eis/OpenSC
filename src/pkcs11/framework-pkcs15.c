@@ -4278,6 +4278,9 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 	case CKM_ECDSA_SHA512:
 		flags = SC_ALGORITHM_ECDSA_HASH_SHA512;
 		break;
+    case CKM_ECDSA_CUSTOM:
+        flags = SC_ALGORITHM_ECDSA_RAW;
+		break;
 	default:
 		sc_log(context, "DEE - need EC for %lu", pMechanism->mechanism);
 		return CKR_MECHANISM_INVALID;
