@@ -377,18 +377,7 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 	/* See if we support this mechanism type */
 	sc_log(context, "mechanism 0x%lX, key-type 0x%lX",
 	       pMechanism->mechanism, key_type);
-	if (pMechanism->mechanism == CKM_ECDSA) {
-        pMechanism->mechanism = CKM_ECDSA_CUSTOM;
-        sc_log(context, "overwite with mechanism 0x%lX", pMechanism->mechanism);
-	
-        CK_MECHANISM_INFO mech_info;
-        mech_info.flags = CKF_SIGN | CKF_VERIFY;
- 		mech_info.ulMinKeySize = 201;
- 		mech_info.ulMaxKeySize = 301;
-        mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA_CUSTOM, &mech_info, CKK_ECDSA, NULL, NULL);
-	} else {
-		mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_SIGN);
-	}
+	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_SIGN);
 	if (mt == NULL)
 		LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
 

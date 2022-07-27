@@ -755,18 +755,8 @@ C_SignUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		return rv;
 
 	rv = get_session(hSession, &session);
-	if (rv == CKR_OK) {
-		CK_ULONG ulSignedPartLen = 0;
-		do   {
-			CK_ULONG ulCurrentPartLen = ((ulPartLen - ulSignedPartLen) < 1025) ? (ulPartLen - ulSignedPartLen) : 1025;
-			rv = sc_pkcs11_sign_update(session, pPart, ulCurrentPartLen);
-			sc_log(context, "C_SignUpdate() = %s", lookup_enum ( RV_T, rv ));
-			if (rv != CKR_OK)
-				break;
-			pPart = pPart + ulCurrentPartLen;
-			ulSignedPartLen += ulCurrentPartLen;
-		} while (ulSignedPartLen < ulPartLen);
-	}
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_sign_update(session, pPart, ulPartLen);
 
 	SC_LOG_RV("C_SignUpdate() = %s", rv);
 	sc_pkcs11_unlock();

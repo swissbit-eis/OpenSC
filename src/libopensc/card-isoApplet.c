@@ -1217,7 +1217,7 @@ isoApplet_compute_signature(struct sc_card *card,
 		free(p);
 	}
 	if (r > outlen)
-            LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 	memcpy(out, seqbuf, r);
 	LOG_FUNC_RETURN(ctx, r);
 }
