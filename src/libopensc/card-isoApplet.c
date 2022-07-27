@@ -1178,7 +1178,7 @@ isoApplet_compute_signature(struct sc_card *card,
 {
 	struct sc_context *ctx = card->ctx;
 	struct isoApplet_drv_data *drvdata = DRVDATA(card);
-	static u8 seqbuf[1025];
+	static u8 seqbuf[256];
 	size_t seqlen = sizeof(seqbuf);
 	int r;
 
