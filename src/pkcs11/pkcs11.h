@@ -729,7 +729,6 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_ECDSA_KEY_PAIR_GEN		(0x1040UL)
 #define CKM_EC_KEY_PAIR_GEN		(0x1040UL)
 #define CKM_ECDSA			(0x1041UL)
-#define CKM_ECDSA_CUSTOM		(0x91UL)
 #define CKM_ECDSA_SHA1			(0x1042UL)
 #define CKM_ECDSA_SHA224		(0x1043UL)
 #define CKM_ECDSA_SHA256		(0x1044UL)
