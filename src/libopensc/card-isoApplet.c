@@ -1178,6 +1178,9 @@ isoApplet_compute_signature(struct sc_card *card,
 {
 	struct sc_context *ctx = card->ctx;
 	struct isoApplet_drv_data *drvdata = DRVDATA(card);
+	/* No more than 256 byte are needed for the signature. The IsoApplet
+	* supports no larger key sizes than for RSA-2048 or EC:secp384r1 leading
+	* to 256 byte or 104 byte, respectively, in ASN.1 sequence. */
 	static u8 seqbuf[256];
 	size_t seqlen = sizeof(seqbuf);
 	int r;
