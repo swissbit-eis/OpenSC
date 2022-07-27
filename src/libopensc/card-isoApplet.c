@@ -1178,11 +1178,13 @@ isoApplet_compute_signature(struct sc_card *card,
 {
 	struct sc_context *ctx = card->ctx;
 	struct isoApplet_drv_data *drvdata = DRVDATA(card);
+	static u8 seqbuf[1025];
+	size_t seqlen = sizeof(seqbuf);
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
 
-	r = iso_ops->compute_signature(card, data, datalen, out, outlen);
+	r = iso_ops->compute_signature(card, data, datalen, seqbuf, seqlen);
 	if(r < 0)
 	{
 		LOG_FUNC_RETURN(ctx, r);
@@ -1195,21 +1197,24 @@ isoApplet_compute_signature(struct sc_card *card,
 		u8* p = NULL;
 		size_t len = (drvdata->sec_env_ec_field_length + 7) / 8 * 2;
 
-		if (len > outlen)
+		if (len > seqlen)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 
 		p = calloc(1,len);
 		if (!p)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
-		r = sc_asn1_sig_value_sequence_to_rs(ctx, out, r, p, len);
+		r = sc_asn1_sig_value_sequence_to_rs(ctx, seqbuf, r, p, len);
 		if (!r)   {
-			memcpy(out, p, len);
+			memcpy(seqbuf, p, len);
 			r = len;
 		}
 
 		free(p);
 	}
+	if (r > outlen)
+            LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+	memcpy(out, seqbuf, r);
 	LOG_FUNC_RETURN(ctx, r);
 }
 

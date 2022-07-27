@@ -701,7 +701,6 @@ C_Sign(CK_SESSION_HANDLE hSession,		/* the session's handle */
 		CK_BYTE_PTR pSignature,		/* receives the signature */
 		CK_ULONG_PTR pulSignatureLen)	/* receives byte count of signature */
 {
-	*pulSignatureLen = 1025;
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 	CK_ULONG length;
