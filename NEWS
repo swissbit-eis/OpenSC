@@ -1,5 +1,9 @@
 NEWS for OpenSC -- History of user visible changes
 
+# New in 0.23.0-swissbit
+## PKCS#11
+ * IsoApplet: Compute hash off card to add support for more ECDSA mechanisms
+
 # New in 0.22.0; 2021-08-10
 ## General improvements
  * Use standard paths for file cache on Linux (#2148) and OSX (#2214)
