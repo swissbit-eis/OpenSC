@@ -17,7 +17,7 @@ if [ ! -d "oracle_javacard_sdks" ]; then
 	# https://github.com/licel/jcardsim/pull/174
 	git clone https://github.com/martinpaljak/oracle_javacard_sdks.git
 fi
-export JC_HOME=$PWD/oracle_javacard_sdks/jc304_kit
+export JC_HOME=$PWD/oracle_javacard_sdks/jc222_kit
 export JC_CLASSIC_HOME=$PWD/oracle_javacard_sdks/jc305u3_kit
 
 # jCardSim
