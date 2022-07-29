@@ -65,7 +65,7 @@ pkcs11-tool -l -t -p 123456
 # run the tests
 pushd src/tests/p11test/
 sleep 5
-./p11test -s 0 -p 123456 -o isoapplet.json || true # ec_sign_size_test is failing here
+./p11test -s 0 -p 123456 -o isoapplet.json
 popd
 
 # random data to be signed
