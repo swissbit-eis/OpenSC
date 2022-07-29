@@ -7,9 +7,9 @@ define([PRODUCT_TARNAME], [opensc])
 define([PRODUCT_BUGREPORT], [https://github.com/OpenSC/OpenSC/issues])
 define([PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [22])
+define([PACKAGE_VERSION_MINOR], [23])
 define([PACKAGE_VERSION_FIX], [0])
-define([PACKAGE_SUFFIX], [])
+define([PACKAGE_SUFFIX], [-swissbit])
 
 define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
 define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
@@ -47,7 +47,7 @@ OPENSC_VS_FF_PRODUCT_URL="VS_FF_PRODUCT_URL"
 #   (Interfaces added:                  CURRENT++, REVISION=0)
 OPENSC_LT_CURRENT="8"
 OPENSC_LT_OLDEST="8"
-OPENSC_LT_REVISION="0"
+OPENSC_LT_REVISION="1"
 OPENSC_LT_AGE="0"
 OPENSC_LT_AGE="$((${OPENSC_LT_CURRENT}-${OPENSC_LT_OLDEST}))"
 
