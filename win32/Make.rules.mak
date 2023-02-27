@@ -54,6 +54,7 @@ OPENSSL_INCL_DIR = /I$(OPENSSL_DIR)\include
 #define OPENSSL_STATIC if you have visual studio compatible with OpenSSL's static binaries
 OPENSSL_STATIC_DIR = static
 
+!IF "$(OPENSSL_LIB)" == ""
 !IF "$(DEBUG_DEF)" == "/DDEBUG"
 !IF "$(PLATFORM)" == "x86"
 # OpenSSL 1.0.2
@@ -77,6 +78,7 @@ OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto32MT.lib user
 #OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libeay32MT.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
 # OpenSSL 1.1.0
 OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto64MT.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
+!ENDIF
 !ENDIF
 !ENDIF
 
@@ -124,8 +126,12 @@ CANDLEFLAGS = -dzlib="C:\zlib-dll" $(CANDLEFLAGS)
 !IF "$(OPENPACE_DIR)" == ""
 OPENPACE_DIR = C:\openpace
 !ENDIF
+!IF "$(OPENPACE_INCL_DIR)" == ""
 OPENPACE_INCL_DIR = /I$(OPENPACE_DIR)\src
+!ENDIF
+!IF "$(OPENPACE_LIB)" == ""
 OPENPACE_LIB = $(OPENPACE_DIR)\src\libeac.lib
+!ENDIF
 !IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
 # Build only when OpenPACE and OpenSSL are available
 PROGRAMS_OPENPACE = npa-tool.exe
