@@ -291,6 +291,11 @@ static const struct sc_atr_table piv_atrs[] = {
 	{ "3b:97:11:81:21:75:69:53:68:69:65:6c:64:05", NULL, NULL, SC_CARD_TYPE_PIV_II_SWISSBIT, 0, NULL },
 	/* Swissbit iShield Key Pro with PIV endpoint applet contactless */
 	{ "3b:87:80:01:69:53:68:69:65:6c:64:50", NULL, NULL, SC_CARD_TYPE_PIV_II_SWISSBIT, 0, NULL },
+	/* Swissbit iShield Key Gen 2 with PIV endpoint applet */
+	{ "3b:d5:18:ff:81:b1:fe:45:1f:c3:80:73:c8:21:10:6f", NULL, NULL,
+	SC_CARD_TYPE_PIV_II_SWISSBIT, 0, NULL },
+	/* Swissbit iShield Key Gen 2 with PIV endpoint applet contactless */
+	{ "3b:85:80:01:80:73:c8:21:10:0e", NULL, NULL, SC_CARD_TYPE_PIV_II_SWISSBIT, 0, NULL },
 
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
