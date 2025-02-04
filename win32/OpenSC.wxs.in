@@ -79,6 +79,19 @@
               </RegistryKey>
             </Component>
 
+            <Component Id="ManagementKey" Guid="*" Win64="$(var.Win64YesNo)" NeverOverwrite="yes" Permanent="yes">
+              <File Id="ManagementKeyFile" Source="$(var.SOURCE_DIR)\etc\management_key.txt" KeyPath="yes"/>
+              <Environment 
+                  Id="SetPIVEnvVar"
+                  Name="PIV_EXT_AUTH_KEY" 
+                  Value="[#ManagementKeyFile]" 
+                  Action="set" 
+                  System="yes"
+                  Part="all"
+                  Permanent="yes"
+              />
+            </Component>
+
             <Directory Id="INSTALLDIR_MINIDRIVER" Name="minidriver">
               <Component Id="opensc_minidriver.dll" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" Vital="yes"/>
@@ -360,6 +373,7 @@
           <ComponentRef Id="zlib1.dll"/>
         <?endif ?>
         <ComponentRef Id="opensc.conf"/>
+        <ComponentRef Id="ManagementKey"/>
         <?ifdef OpenSSL ?>
           <ComponentRef Id="smm_local.dll"/>
         <?endif ?>
