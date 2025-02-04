@@ -92,6 +92,10 @@
               />
             </Component>
 
+            <Component Id="IshieldPivModule" Guid="*" Win64="$(var.Win64YesNo)">
+              <File Source="$(var.SOURCE_DIR)\win32\ishield_piv_module.dll" KeyPath="yes"/>
+            </Component>
+
             <Directory Id="INSTALLDIR_MINIDRIVER" Name="minidriver">
               <Component Id="opensc_minidriver.dll" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" Vital="yes"/>
@@ -374,6 +378,7 @@
         <?endif ?>
         <ComponentRef Id="opensc.conf"/>
         <ComponentRef Id="ManagementKey"/>
+        <ComponentRef Id="IshieldPivModule"/>
         <?ifdef OpenSSL ?>
           <ComponentRef Id="smm_local.dll"/>
         <?endif ?>
