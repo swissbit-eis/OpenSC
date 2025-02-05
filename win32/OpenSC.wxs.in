@@ -239,6 +239,20 @@
                   <RegistryValue Type="string" Name="opensc-notify.exe" Value="[INSTALLDIR_TOOLS]opensc-notify.exe" />
                 </RegistryKey>
               </Component>
+              <Component Id="AddToolsToPath" Guid="*" Win64="$(var.Win64YesNo)">
+                <RegistryValue Root="HKLM"
+                               Key="Software\[Manufacturer]\OpenSC\Settings"
+                               Name="ToolsPathInstalled"
+                               Type="integer"
+                               Value="1"
+                               KeyPath="yes"/>
+                <Environment Id="AddToolsToPathEnv"
+                            Name="PATH"
+                            Value="[INSTALLDIR_TOOLS]"
+                            Action="set"
+                            Part="last"
+                            System="yes"/>
+              </Component>
             </Directory>
             <?ifdef OpenSSL ?>
               <Directory Id="INSTALLDIR_PROFILES" Name="profiles">
@@ -458,6 +472,7 @@
           <ComponentRef Id="gids.profile"/>
           <ComponentRef Id="PIV_II.profile"/>
         <?endif ?>
+        <ComponentRef Id="AddToolsToPath"/>
         <Feature Id="OpenSC_autostart" Level="1" Title="Autostart entries" Description="After login, automatically register the PKCS#11 module and start smart card notifications.">
           <ComponentRef Id="Autostart_tools"/>
           <ComponentRef Id="Autostart_native_tools"/>
