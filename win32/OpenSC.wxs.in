@@ -79,8 +79,16 @@
               </RegistryKey>
             </Component>
 
-            <Component Id="ManagementKey" Guid="*" Win64="$(var.Win64YesNo)" NeverOverwrite="yes">
+            <Component Id="ManagementKey" Guid="9f217821-192c-463a-86f1-6493b63281ce" Win64="$(var.Win64YesNo)">
               <File Id="ManagementKeyFile" Source="$(var.SOURCE_DIR)\etc\management_key.txt" KeyPath="yes"/>
+            </Component>
+            <Component Id="AddPIVAuthKey" Guid="*" Win64="$(var.Win64YesNo)">
+              <RegistryValue Root="HKLM"
+                              Key="Software\[Manufacturer]\OpenSC\Settings"
+                              Name="PIVAuthKeySet"
+                              Type="integer"
+                              Value="1"
+                              KeyPath="yes"/>
               <Environment 
                   Id="SetPIVEnvVar"
                   Name="PIV_EXT_AUTH_KEY" 
@@ -405,6 +413,7 @@
         <ComponentRef Id="opensc.conf"/>
         <ComponentRef Id="ManagementKey"/>
         <ComponentRef Id="IshieldPivModule"/>
+        <ComponentRef Id="AddPIVAuthKey"/>
         <?ifdef OpenSSL ?>
           <ComponentRef Id="smm_local.dll"/>
         <?endif ?>
