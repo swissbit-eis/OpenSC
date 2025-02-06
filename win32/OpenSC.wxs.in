@@ -93,8 +93,21 @@
             </Component>
 
             <Component Id="IshieldPivModule" Guid="*" Win64="$(var.Win64YesNo)">
-              <File Source="$(var.SOURCE_DIR)\win32\ishield_piv_module.dll" KeyPath="yes"/>
+              <?if $(var.Platform) = x64 ?>
+                <!-- 64-bit version -->
+                <File Source="$(var.SOURCE_DIR)\win64\ishield_piv_module.dll"
+                      KeyPath="yes"
+                      Vital="yes"
+                      ProcessorArchitecture="x64"/>
+              <?else ?>
+                <!-- 32-bit version -->
+                <File Source="$(var.SOURCE_DIR)\win32\ishield_piv_module.dll"
+                      KeyPath="yes"
+                      Vital="yes"
+                      ProcessorArchitecture="x86"/>
+              <?endif ?>
             </Component>
+
 
             <Directory Id="INSTALLDIR_MINIDRIVER" Name="minidriver">
               <Component Id="opensc_minidriver.dll" Guid="*" Win64="$(var.Win64YesNo)">
