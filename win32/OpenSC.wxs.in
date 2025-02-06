@@ -79,7 +79,7 @@
               </RegistryKey>
             </Component>
 
-            <Component Id="ManagementKey" Guid="*" Win64="$(var.Win64YesNo)" NeverOverwrite="yes" Permanent="yes">
+            <Component Id="ManagementKey" Guid="*" Win64="$(var.Win64YesNo)" NeverOverwrite="yes">
               <File Id="ManagementKeyFile" Source="$(var.SOURCE_DIR)\etc\management_key.txt" KeyPath="yes"/>
               <Environment 
                   Id="SetPIVEnvVar"
@@ -88,7 +88,6 @@
                   Action="set" 
                   System="yes"
                   Part="all"
-                  Permanent="yes"
               />
             </Component>
 
