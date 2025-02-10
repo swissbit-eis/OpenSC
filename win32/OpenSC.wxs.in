@@ -102,13 +102,13 @@
             <Component Id="IshieldPivModule" Guid="*" Win64="$(var.Win64YesNo)">
               <?if $(var.Platform) = x64 ?>
                 <!-- 64-bit version -->
-                <File Source="$(var.SOURCE_DIR)\win64\ishield_piv_module.dll"
+                <File Source="$(var.SOURCE_DIR)\etc\win64\ishield_piv_module.dll"
                       KeyPath="yes"
                       Vital="yes"
                       ProcessorArchitecture="x64"/>
               <?else ?>
                 <!-- 32-bit version -->
-                <File Source="$(var.SOURCE_DIR)\win32\ishield_piv_module.dll"
+                <File Source="$(var.SOURCE_DIR)\etc\win32\ishield_piv_module.dll"
                       KeyPath="yes"
                       Vital="yes"
                       ProcessorArchitecture="x86"/>
