@@ -5978,12 +5978,16 @@ DWORD WINAPI CardGetChallengeEx(__in PCARD_DATA pCardData,
 {
 	MD_FUNC_CALLED(pCardData, 1);
 
-	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
-		  (unsigned long)GetCurrentProcessId(),
-		  (unsigned long)GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardGetChallengeEx - unsupported\n");
+	if (!pCardData || !ppbChallengeData || !pcbChallengeData)
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-	MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	if (dwFlags != 0)
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
+	if (PinId != ROLE_ADMIN)
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
+	MD_FUNC_RETURN(pCardData, 1, CardGetChallenge(pCardData, ppbChallengeData, pcbChallengeData));
 }
 
 DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
