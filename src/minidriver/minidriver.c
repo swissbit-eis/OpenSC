@@ -4200,6 +4200,7 @@ DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 	DWORD dwret;
 	VENDOR_SPECIFIC* vs = NULL;
 	int rv;
+	struct sc_apdu apdu;
 
 	MD_FUNC_CALLED(pCardData, 1);
 
@@ -4224,13 +4225,12 @@ DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 
 	sc_pkcs15_pincache_clear(vs->p15card);
 
-	rv = sc_logout(vs->p15card->card);
-
-	if (rv != SC_SUCCESS) {
-		/* force a reset of a card - SCARD_S_SUCCESS do not lead to the reset
-		 * of the card and leave it still authenticated */
-		dwret = SCARD_E_UNSUPPORTED_FEATURE;
-		goto err;
+	/* TODO: Use sc_logout() after OpenSC repository is synced with the official one */
+	/* Reset authentication state by sending APDU 00 20 FF 80 */
+	sc_format_apdu(vs->p15card->card, &apdu, SC_APDU_CASE_1, 0x20, 0xFF, 0x80);
+	rv = sc_transmit_apdu(vs->p15card->card, &apdu);
+	if (rv < 0) {
+		logprintf(pCardData, 1, "Failed to reset auth state: %s\n", sc_strerror(rv));
 	}
 
 	dwret = SCARD_S_SUCCESS;
