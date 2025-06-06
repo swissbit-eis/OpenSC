@@ -6057,6 +6057,8 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		  "CardAuthenticateEx: PinId=%u, dwFlags=0x%08X, cbPinData=%lu, Attempts %s\n",
 		  (unsigned int)PinId, (unsigned int)dwFlags,
 		  (unsigned long)cbPinData, pcAttemptsRemaining ? "YES" : "NO");
+	logprintf(pCardData, 1, "pbPinData:");
+	loghex(pCardData, 2, pbPinData, cbPinData);
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 	if (!vs)
@@ -6104,6 +6106,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 	/* save the pin type */
 	auth_method = auth_info->auth_method;
+	logprintf(pCardData, 1, "auth_info->auth_method: %d\n", auth_info->auth_method);
 
 	/* Do we need to display a prompt to enter PIN on pin pad? */
 	logprintf(pCardData, 7, "PIN pad=%s, pbPinData=%p, hwndParent=%p\n",
@@ -6178,7 +6181,17 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 					(unsigned long) cbPinData, (unsigned int) auth_info->auth_method, (unsigned char) auth_info->auth_id.value[0]);
 			auth_info->auth_method = SC_AC_CONTEXT_SPECIFIC;
 		}
-		r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_VERIFY, vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData, NULL, NULL, DisplayPinpadUI, PinId);
+		if (PinId == ROLE_ADMIN) {
+			u8 auth_data[3];
+			auth_data[0] = 'A';
+			auth_data[1] = 0x9B;
+			auth_data[2] = 0x00;
+			r = sc_card_ctl(vs->p15card->card, SC_CARDCTL_PIV_AUTHENTICATE, auth_data);
+		}
+		else {
+			r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_VERIFY, vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData, NULL, NULL, DisplayPinpadUI, PinId);
+		}
+
 	}
 
 	/* restore the pin type */
