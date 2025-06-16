@@ -3938,10 +3938,10 @@ err:
 }
 
 
-DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA pCardData,
-    __in_bcount(cbResponseData) PBYTE pbResponseData,
-    __in DWORD cbResponseData,
-    __out_opt PDWORD pcAttemptsRemaining)
+DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
+	__in_bcount(cbResponseData) PBYTE  pbResponseData,
+	__in DWORD  cbResponseData,
+	__out_opt PDWORD pcAttemptsRemaining)
 {
     VENDOR_SPECIFIC *vs;
     DWORD dwret;
@@ -3975,9 +3975,6 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA pCardData,
     // because piv management key does not have attempts remaining
     if (pcAttemptsRemaining)
         *pcAttemptsRemaining = (DWORD)-1;
-
-    logprintf(pCardData, 7, "Response from client: ");
-    loghex(pCardData, 7, pbResponseData, cbResponseData);
 
     /*
      * Build: 7C<len>[82<len><challenge>]
@@ -4228,7 +4225,6 @@ DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 	DWORD dwret;
 	VENDOR_SPECIFIC* vs = NULL;
 	int rv;
-	struct sc_apdu apdu;
 
 	MD_FUNC_CALLED(pCardData, 1);
 
@@ -4253,12 +4249,13 @@ DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 
 	sc_pkcs15_pincache_clear(vs->p15card);
 
-	/* TODO: Use sc_logout() after OpenSC repository is synced with the official one */
-	/* Reset authentication state by sending APDU 00 20 FF 80 */
-	sc_format_apdu(vs->p15card->card, &apdu, SC_APDU_CASE_1, 0x20, 0xFF, 0x80);
-	rv = sc_transmit_apdu(vs->p15card->card, &apdu);
-	if (rv < 0) {
-		logprintf(pCardData, 1, "Failed to reset auth state: %s\n", sc_strerror(rv));
+	rv = sc_logout(vs->p15card->card);
+
+	if (rv != SC_SUCCESS) {
+		/* force a reset of a card - SCARD_S_SUCCESS do not lead to the reset
+		 * of the card and leave it still authenticated */
+		dwret = SCARD_E_UNSUPPORTED_FEATURE;
+		goto err;
 	}
 
 	dwret = SCARD_S_SUCCESS;
@@ -6057,8 +6054,6 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		  "CardAuthenticateEx: PinId=%u, dwFlags=0x%08X, cbPinData=%lu, Attempts %s\n",
 		  (unsigned int)PinId, (unsigned int)dwFlags,
 		  (unsigned long)cbPinData, pcAttemptsRemaining ? "YES" : "NO");
-	logprintf(pCardData, 1, "pbPinData:");
-	loghex(pCardData, 2, pbPinData, cbPinData);
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 	if (!vs)
@@ -6106,7 +6101,6 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 	/* save the pin type */
 	auth_method = auth_info->auth_method;
-	logprintf(pCardData, 1, "auth_info->auth_method: %d\n", auth_info->auth_method);
 
 	/* Do we need to display a prompt to enter PIN on pin pad? */
 	logprintf(pCardData, 7, "PIN pad=%s, pbPinData=%p, hwndParent=%p\n",
@@ -6170,28 +6164,24 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	} else {
 		if (pcbSessionPin) *pcbSessionPin = 0;
 		if (ppbSessionPin) *ppbSessionPin = NULL;
-		logprintf(pCardData, 2, "standard pin verification");
-		/*
-		 * TODO the use of auth_method being overridden to do session pin
-		 * conflicts with framework-pkcs15.c use of auth_method  SC_AC_CONTEXT_SPECIFIC
-		 * for a different purpose. But needs to be reviewed
-		 */
-		if (PinId == MD_ROLE_USER_SIGN && vs->need_pin_always) {
-			logprintf(pCardData, 7, "Setting SC_AC_CONTEXT_SPECIFIC cbPinData: %lu old auth_method: %0x auth_id:%x \n",
-					(unsigned long) cbPinData, (unsigned int) auth_info->auth_method, (unsigned char) auth_info->auth_id.value[0]);
-			auth_info->auth_method = SC_AC_CONTEXT_SPECIFIC;
-		}
-		if (PinId == ROLE_ADMIN) {
-			u8 auth_data[3];
-			auth_data[0] = 'A';
-			auth_data[1] = 0x9B;
-			auth_data[2] = 0x00;
-			r = sc_card_ctl(vs->p15card->card, SC_CARDCTL_PIV_AUTHENTICATE, auth_data);
-		}
-		else {
-			r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_VERIFY, vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData, NULL, NULL, DisplayPinpadUI, PinId);
-		}
 
+		if (PinId == ROLE_ADMIN) {
+			logprintf(pCardData, 2, "challenge response pin verification");
+			MD_FUNC_RETURN(pCardData, 1, CardAuthenticateChallenge(pCardData, pbPinData, cbPinData, pcAttemptsRemaining));
+		} else {
+			logprintf(pCardData, 2, "standard pin verification");
+			/*
+			 * TODO the use of auth_method being overridden to do session pin
+			 * conflicts with framework-pkcs15.c use of auth_method  SC_AC_CONTEXT_SPECIFIC
+			 * for a different purpose. But needs to be reviewed
+			 */
+			if (PinId == MD_ROLE_USER_SIGN && vs->need_pin_always) {
+				logprintf(pCardData, 7, "Setting SC_AC_CONTEXT_SPECIFIC cbPinData: %lu old auth_method: %0x auth_id:%x \n",
+						(unsigned long)cbPinData, (unsigned int)auth_info->auth_method, (unsigned char)auth_info->auth_id.value[0]);
+				auth_info->auth_method = SC_AC_CONTEXT_SPECIFIC;
+			}
+			r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_VERIFY, vs->p15card, pin_obj, (const u8 *)pbPinData, cbPinData, NULL, NULL, DisplayPinpadUI, PinId);
+		}
 	}
 
 	/* restore the pin type */
