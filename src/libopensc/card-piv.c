@@ -415,6 +415,7 @@ typedef struct piv_private_data {
 	unsigned int pin_policy; /* from discovery */
 	unsigned int init_flags;
 	u8  csID; /* 800-73-4 Cipher Suite ID 0x27 or 0x2E */
+	u8 mgmt_key_alg;
 #ifdef ENABLE_PIV_SM
 	cipher_suite_t *cs; /* active cipher_suite */
 	piv_cvc_t sm_cvc;  /* 800-73-4:  SM CVC Table 15 */
@@ -4475,7 +4476,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	 * Now that the card returned error, we can try one more time.
 	 */
 	 if (r == SC_ERROR_INCORRECT_PARAMETERS) {
-		r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
+		r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
 		if (r == SC_ERROR_INCORRECT_PARAMETERS) {
 			r = SC_ERROR_NOT_SUPPORTED;
 		}
@@ -4503,6 +4504,34 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 err:
 	LOG_FUNC_RETURN(card->ctx, r);
 
+}
+
+static int piv_authenticate_challenge(sc_card_t *card, const u8 *response_data, size_t response_data_len)
+{
+    u8 sbuf[4096];
+    int r;
+    u8 *p;
+    piv_private_data_t * priv = PIV_DATA(card);
+    
+    LOG_FUNC_CALLED(card->ctx);
+
+    // Build the TLV structure
+    p = sbuf;
+    
+    // Create 7C TLV wrapper
+    r = sc_asn1_put_tag(0x7C, NULL, response_data_len + 2, p, sizeof(sbuf), &p);
+    if (r != SC_SUCCESS)
+        LOG_FUNC_RETURN(card->ctx, r);
+        
+    // Create 82 TLV for the challenge response
+    r = sc_asn1_put_tag(0x82, response_data, response_data_len, p, sizeof(sbuf) - (p - sbuf), &p);
+    if (r != SC_SUCCESS)
+        LOG_FUNC_RETURN(card->ctx, r);
+        
+    // Send GENERAL AUTHENTICATE command
+    r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B, sbuf, p - sbuf, NULL, 0);
+    
+    LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int
@@ -5774,6 +5803,54 @@ err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+/*
+ * Get the algorithm of the management key for admin operations.
+ */
+static u8 piv_get_management_key_algorithm(sc_card_t *card) {
+  int r;
+
+  sc_apdu_t apdu;
+  sc_format_apdu(card, &apdu,
+                 SC_APDU_CASE_2_SHORT, // command with output data only
+                 0xF7,                 // INS: GET METADATA Card Command
+                 0x00,                 // P1
+                 0x9B                  // P2
+  );
+
+  // The GET METADATA response for the management key slot consists of a list of
+  // TLVs. For the slot 0x9B, 4 tags are supported:
+  // 1. 0x01: Algorithm of the key
+  // 2. 0x02: PIN and touch policy
+  // 3. 0x03: Origin of the key
+  // 4. 0x05: Whether the management key has default value
+  //
+  // The response consists of 10 bytes:
+  //  - the algorithm TLV has 3 bytes (1 byte tag + 1 byte len + 1 byte length)
+  //  - the PIN and touch policy TLV has 4 bytes (1 byte tag + 1 byte len + 2
+  //  byte data)
+  //  - the origin TLV has 3 bytes (1 byte tag + 1 byte len + 1 byte data)
+  //  - the default TLV has 3 bytes (1 byte tag + 1 byte len + 1 byte data)
+  unsigned char rbuf[13];
+  apdu.resp = rbuf;
+  apdu.resplen = sizeof(rbuf);
+  apdu.le = sizeof(rbuf);
+
+  r = sc_transmit_apdu(card, &apdu);
+  LOG_TEST_RET(card->ctx, r, "Transmit GET METADATA APDU failed");
+
+  r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+  LOG_TEST_RET(card->ctx, r, "GET METADATA command failed");
+
+  size_t algorithm_tag_len;
+  const u8 *algorithm;
+  algorithm = sc_asn1_find_tag(card->ctx, apdu.resp, apdu.resplen, 0x01,
+                               &algorithm_tag_len);
+  if (!algorithm || algorithm_tag_len != 1) {
+    sc_log(card->ctx, "Cannot get key management algorithm");
+    LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
+  }
+  return *algorithm;
+}
 
 static int piv_init(sc_card_t *card)
 {
@@ -5927,6 +6004,8 @@ static int piv_init(sc_card_t *card)
 	 * keys and certs. "piv like" cards may or may not have history
 	 */
 	piv_process_history(card);
+
+	priv->mgmt_key_alg = piv_get_management_key_algorithm(card);
 
 	priv->pstate=PIV_STATE_NORMAL;
 	sc_unlock(card);
@@ -6333,6 +6412,7 @@ static struct sc_card_driver * sc_get_driver(void)
 
 	piv_ops.select_file =  piv_select_file; /* must use get/put, could emulate? */
 	piv_ops.get_challenge = piv_get_challenge;
+	piv_ops.authenticate_challenge = piv_authenticate_challenge;
 	piv_ops.logout = piv_logout;
 	piv_ops.read_binary = piv_read_binary;
 	piv_ops.write_binary = piv_write_binary;

@@ -3945,11 +3945,7 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
 {
     VENDOR_SPECIFIC *vs;
     DWORD dwret;
-    int rv, tmplen;
-    struct sc_apdu apdu;
-    PBYTE output_buf = NULL;
-    PBYTE p = NULL;
-    size_t output_len = 0;
+    int rv;
 
     MD_FUNC_CALLED(pCardData, 1);
 
@@ -3976,103 +3972,23 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
     if (pcAttemptsRemaining)
         *pcAttemptsRemaining = (DWORD)-1;
 
-    /*
-     * Build: 7C<len>[82<len><challenge>]
-     * Start off by capturing the data of the response:
-     *     - 82<len><encrypted challenege response>
-     * Build the outside TLV (7C)
-     * Advance past that tag + len
-     * Build the body (82)
-     * memcopy the body past the 7C<len> portion
-     * Transmit
-     */
-
-    // Calculate the size needed for the output buffer
-    // First, get the size of the inner TLV (0x82 tag)
-    tmplen = sc_asn1_put_tag(0x82, NULL, cbResponseData, NULL, 0, NULL);
-    if (tmplen <= 0) {
-        logprintf(pCardData, 1, "Failed to calculate inner TLV size\n");
-        dwret = SCARD_E_UNEXPECTED;
-        goto err;
-    }
-
-    // Then calculate the total size including the outer TLV (0x7C tag)
-    output_len = sc_asn1_put_tag(0x7C, NULL, tmplen, NULL, 0, NULL);
-    if (output_len <= 0) {
-        logprintf(pCardData, 1, "Failed to calculate outer TLV size\n");
-        dwret = SCARD_E_UNEXPECTED;
-        goto err;
-    }
-
-    // Allocate buffer for the formatted data
-    output_buf = pCardData->pfnCspAlloc(output_len);
-    if (!output_buf) {
-        logprintf(pCardData, 1, "Out of memory\n");
-        dwret = SCARD_E_NO_MEMORY;
-        goto err;
-    }
-
-    // Build the outer TLV (7C)
-    p = output_buf;
-    rv = sc_asn1_put_tag(0x7C, NULL, tmplen, p, output_len, &p);
-    if (rv != SC_SUCCESS) {
-        logprintf(pCardData, 1, "Failed to build outer TLV: %s\n", sc_strerror(rv));
-        dwret = SCARD_E_UNEXPECTED;
-        goto err;
-    }
-
-    // Build the inner TLV (82) and append to the 7C<len> tag
-    rv = sc_asn1_put_tag(0x82, pbResponseData, cbResponseData, p, output_len - (p - output_buf), &p);
-    if (rv != SC_SUCCESS) {
-        logprintf(pCardData, 1, "Failed to build inner TLV: %s\n", sc_strerror(rv));
-        dwret = SCARD_E_UNEXPECTED;
-        goto err;
-    }
-
-    // Prepare the APDU for authentication
-    // For PIV cards, this is GENERAL AUTHENTICATE command
-    // CLA: 0x00, INS: 0x87 (GENERAL AUTHENTICATE), P1: 0x00 (algorithm), P2: 0x9B (key reference)
-    sc_format_apdu(vs->card, &apdu, SC_APDU_CASE_3_SHORT, 0x87, 0x00, 0x9B);
-    apdu.lc = output_len;
-    apdu.data = output_buf;
-    apdu.datalen = output_len;
-    apdu.resp = NULL;
-    apdu.resplen = 0;
+    rv = sc_authenticate_challenge(vs->card, pbResponseData, cbResponseData);
     
-    logprintf(pCardData, 3, "Sending authentication APDU to card\n");
-    loghex(pCardData, 7, output_buf, output_len);
-    
-    rv = sc_transmit_apdu(vs->card, &apdu);
-    
-    if (rv != SC_SUCCESS) {
-        logprintf(pCardData, 1, "APDU transmit failed: %s\n", sc_strerror(rv));
-        dwret = md_translate_OpenSC_to_Windows_error(rv, SCARD_E_UNEXPECTED);
-        goto err;
-    }
-    
-    // Check the response status
-    rv = sc_check_sw(vs->card, apdu.sw1, apdu.sw2);
-   
     if (rv != SC_SUCCESS) {
         logprintf(pCardData, 1, "Challenge-response authentication failed: %s\n", sc_strerror(rv));
         
-        if (rv == SC_ERROR_AUTH_METHOD_BLOCKED) {
+        dwret = md_translate_OpenSC_to_Windows_error(rv, SCARD_E_UNEXPECTED);
+        if (rv == SC_ERROR_AUTH_METHOD_BLOCKED)
             dwret = SCARD_W_CHV_BLOCKED;
-        } else {
+        else if (rv == SC_ERROR_PIN_CODE_INCORRECT)
             dwret = SCARD_W_WRONG_CHV;
-        }
-       
         goto err;
     }
 
-    // Authentication successful
     logprintf(pCardData, 1, "Challenge-response authentication successful\n");
-    
     dwret = SCARD_S_SUCCESS;
 
 err:
-    if (output_buf)
-        pCardData->pfnCspFree(output_buf);
     unlock(pCardData);
     MD_FUNC_RETURN(pCardData, 1, dwret);
 }

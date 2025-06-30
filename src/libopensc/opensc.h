@@ -733,6 +733,18 @@ struct sc_card_operations {
 	 * @return number of random bytes successfully initialized (i.e. `count` or less bytes) or an error code
 	 */
 	int (*get_challenge)(struct sc_card *card, u8 * buf, size_t count);
+    
+	/**
+	 * @brief Authenticate a challenge
+	 *
+	 * Implementation of this call back is optional and may be NULL.
+	 *
+	 * @param  card   struct sc_card object on which to issue the command
+	 * @param  buf    buffer to be filled with calculated response
+	 * @param  count  number of bytes of calculated response
+	 * @return error code
+	 */
+	int (*authenticate_challenge)(struct sc_card *card, const u8 *response_data, size_t response_data_len);
 
 	/*
 	 * ISO 7816-8 functions
@@ -1364,6 +1376,8 @@ int sc_put_data(struct sc_card *, unsigned int, const u8 *, size_t);
  * @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_get_challenge(struct sc_card *card, u8 * rndout, size_t len);
+
+int sc_authenticate_challenge(sc_card_t *card, const u8 *response_data, size_t response_data_len);
 
 /********************************************************************/
 /*              ISO 7816-8 related functions                        */
