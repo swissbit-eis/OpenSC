@@ -1452,6 +1452,7 @@ static struct sc_card_operations iso_ops = {
 	iso7816_select_file,
 	iso7816_get_response,
 	iso7816_get_challenge,
+	NULL,           /* authenticate_challenge*/
 	NULL,			/* verify */
 	NULL,			/* logout */
 	iso7816_restore_security_env,
