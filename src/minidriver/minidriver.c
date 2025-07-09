@@ -1,4 +1,4 @@
-/*
+﻿/*
  * minidriver.c: OpenSC minidriver
  *
  * Copyright (C) 2009,2010 francois.leblanc@cev-sa.com
@@ -2497,7 +2497,6 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 		return SCARD_E_UNSUPPORTED_FEATURE;
 	}
 	if (pub_args.key.algorithm == SC_ALGORITHM_EC) {
-		keygen_args.prkey_args.key.u.ec.params.field_length = key_size;
 		struct sc_ec_parameters ecp;
 		memset(&ecp, 0, sizeof(ecp));
 		if ((key_type == AT_ECDSA_P256)|| (key_type == AT_ECDHE_P256)) {
@@ -2514,8 +2513,9 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 			ecp.der.len = 7;
 			ecp.der.value = (unsigned char *)"\x06\x05\x2B\x81\x04\x00\x23";
 		}
+		ecp.field_length = key_size;
+
 		sc_copy_ec_params(&keygen_args.prkey_args.key.u.ec.params, &ecp);
-		keygen_args.prkey_args.key.u.ec.params.field_length = key_bits;
 	}
 
 	keygen_args.prkey_args.access_flags = MD_KEY_ACCESS;
