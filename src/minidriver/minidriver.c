@@ -2498,19 +2498,24 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 	}
 	if (pub_args.key.algorithm == SC_ALGORITHM_EC) {
 		keygen_args.prkey_args.key.u.ec.params.field_length = key_size;
+		struct sc_ec_parameters ecp;
+		memset(&ecp, 0, sizeof(ecp));
 		if ((key_type == AT_ECDSA_P256)|| (key_type == AT_ECDHE_P256)) {
-			keygen_args.prkey_args.key.u.ec.params.named_curve = "secp256r1";
-			keygen_args.prkey_args.key.u.ec.params.der.len = 10;
-			keygen_args.prkey_args.key.u.ec.params.der.value = (unsigned char *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07";
+			ecp.named_curve = "secp256r1";
+			ecp.der.len = 10;
+			ecp.der.value =
+          (unsigned char *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07";
 		} else if ((key_type == AT_ECDSA_P384)|| (key_type == AT_ECDHE_P384)) {
-			keygen_args.prkey_args.key.u.ec.params.named_curve = "secp384r1";
-			keygen_args.prkey_args.key.u.ec.params.der.len = 7;
-			keygen_args.prkey_args.key.u.ec.params.der.value = (unsigned char *)"\x06\x05\x2B\x81\x04\x00\x22";
+			ecp.named_curve = "secp384r1";
+			ecp.der.len = 7;
+			ecp.der.value = (unsigned char *)"\x06\x05\x2B\x81\x04\x00\x22";
 		} else if ((key_type == AT_ECDSA_P521)|| (key_type == AT_ECDHE_P521)) {
-			keygen_args.prkey_args.key.u.ec.params.named_curve = "secp521r1";
-			keygen_args.prkey_args.key.u.ec.params.der.len = 7;
-			keygen_args.prkey_args.key.u.ec.params.der.value = (unsigned char *)"\x06\x05\x2B\x81\x04\x00\x23";
+			ecp.named_curve = "secp521r1";
+			ecp.der.len = 7;
+			ecp.der.value = (unsigned char *)"\x06\x05\x2B\x81\x04\x00\x23";
 		}
+		sc_copy_ec_params(&keygen_args.prkey_args.key.u.ec.params, &ecp);
+		keygen_args.prkey_args.key.u.ec.params.field_length = key_bits;
 	}
 
 	keygen_args.prkey_args.access_flags = MD_KEY_ACCESS;
