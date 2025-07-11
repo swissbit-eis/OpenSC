@@ -3721,21 +3721,22 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		logprintf(pCardData, 7, "Encoding ECC public key");
 
 		if (pubkey_der.len > 3 && pubkey_der.value && pubkey_der.value[0] == 4) {
-			DWORD offset = 0;
-			DWORD actual_key_len = 0;
+			size_t offset = 2;
+			size_t actual_key_len = pubkey_der.value[1];
 
-			if (pubkey_der.value[1] == 0x81) {
-				// Long-form length (1-byte)
-				actual_key_len = pubkey_der.value[2];
-				offset = 3;
-			} else if (pubkey_der.value[1] < 0x80) {
-				// Short-form length
-				actual_key_len = pubkey_der.value[1];
-				offset = 2;
-			} else {
-				logprintf(pCardData, 3, "Unsupported DER length encoding in ECC public key");
-				ret = SCARD_F_INTERNAL_ERROR;
-				goto err;
+			if (actual_key_len & 0x80) {
+			    offset += actual_key_len & 0x7f;
+			    if (pubkey_der.len <= offset) {
+			        logprintf(pCardData, 3, "DER problem");
+			        ret = SC_ERROR_INVALID_ASN1_OBJECT;
+			        goto err;
+			    }
+			    size_t a = 0;
+			    for (int i = 2; i < offset; i++) {
+			        a <<= 8;
+			        a |= pubkey_der.value[i];
+			    }
+			    actual_key_len = a;
 			}
 
 			if (actual_key_len + offset != pubkey_der.len) {
