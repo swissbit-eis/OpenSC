@@ -4673,7 +4673,7 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 	 * and pad on left if too short.
 	 */
 
-	if (priv->alg_id == 0x11 || priv->alg_id == 0x14 || priv->alg_id == 0x32 ) {
+	if (priv->alg_id == 0x11 || priv->alg_id == 0x14 || priv->alg_id == 0x32) {
 		nLen = BYTES4BITS(priv->key_size);
 		if (outlen < 2*nLen) {
 			sc_log(card->ctx,
