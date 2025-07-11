@@ -575,7 +575,7 @@ sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
 		/* EC, Edwards and Montgomery use common ec params */
 		sc_clear_ec_params(&key->u.ec.params);
 		if (key->u.ec.privateD.len)
-		    free(key->u.ec.privateD.data);
+			free(key->u.ec.privateD.data);
 		free(key->u.ec.ecpointQ.value);
 		break;
 	}
