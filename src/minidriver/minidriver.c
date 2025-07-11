@@ -4998,6 +4998,10 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				/* ECDSA_P512 : special case !!!*/
 				pInfo->cbSignedData = 132;
 				break;
+			case 521:
+				/* ECDSA_P521 : special case !!!*/
+				pInfo->cbSignedData = 132;
+				break;
 			default:
 				logprintf(pCardData, 0,
 					  "unknown ECC key size %"SC_FORMAT_LEN_SIZE_T"u\n",
