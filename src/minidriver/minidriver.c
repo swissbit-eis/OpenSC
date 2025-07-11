@@ -3815,7 +3815,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					goto err;
 				}
 
-				publicKey->cbKey = (DWORD)(pubkey_der.len - offset - 1) /2;
+				publicKey->cbKey = (DWORD)(pubkey_der.len - offset - 1) / 2;
 				publicKey->dwMagic = dwMagic;
 
 				pContainerInfo->cbKeyExPublicKey = sz;
