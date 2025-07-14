@@ -5848,7 +5848,7 @@ static int piv_init(sc_card_t *card)
 			if (ec_curves[i].key_type == SC_ALGORITHM_EC) {
 				if (priv->card_issues & CI_NO_EC384 && ec_curves[i].size == 384)
 					continue;
-				if (!(priv->card_issues & CI_EC521) || ec_curves[i].size == 521)
+				if (!(priv->card_issues & CI_EC521) && ec_curves[i].size == 521)
 					continue;
 				_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].oid);
 
