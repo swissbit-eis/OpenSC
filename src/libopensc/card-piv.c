@@ -5595,8 +5595,7 @@ static int piv_match_card_continued(sc_card_t *card)
                                     (swissbit_version_buf[2] << 8) | swissbit_version_buf[3];
                                 sc_log(card->ctx, "Swissbit card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->swissbit_version);
                         }
-						
-						card->mgmt_key_alg = piv_get_management_key_algorithm(card);
+                        card->mgmt_key_alg = piv_get_management_key_algorithm(card);
         }
 
         sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
