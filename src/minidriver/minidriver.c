@@ -3922,8 +3922,8 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
 	MD_FUNC_CALLED(pCardData, 1);
 
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
-			(unsigned long)GetCurrentProcessId(),
-			(unsigned long)GetCurrentThreadId(), pCardData);
+		  (unsigned long)GetCurrentProcessId(),
+		  (unsigned long)GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardAuthenticateChallenge\n");
 
 	if (!pCardData || !pbResponseData || !lock(pCardData))
