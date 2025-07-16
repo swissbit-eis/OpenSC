@@ -6534,17 +6534,14 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		if (dwFlags != ROLE_EVERYONE && vs->pin_objs[dwFlags] == NULL)
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-		if (dwFlags == ROLE_ADMIN && pCardData->dwVersion >= CARD_DATA_VERSION_SIX)
-		{
+		if (dwFlags == ROLE_ADMIN && pCardData->dwVersion >= CARD_DATA_VERSION_SIX) {
 			// For admin PIN in V6 and above, use ChallengeResponsePinType
 			p->PinType = ChallengeResponsePinType;
-		}
-		else
-		{
+		} else {
 			// For other PINs or older versions, use the original logic
 			p->PinType = vs->reader->capabilities & SC_READER_CAP_PIN_PAD || vs->p15card->card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH
-							 ? ExternalPinType
-							 : AlphaNumericPinType;
+						     ? ExternalPinType
+						     : AlphaNumericPinType;
 		}
 		p->dwFlags = 0;
 		switch (dwFlags)   {
