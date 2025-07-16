@@ -935,7 +935,7 @@ int sc_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-int sc_authenticate_challenge(sc_card_t *card, const u8 *response_data, size_t response_data_len)
+int sc_authenticate_challenge(sc_card_t *card, const u8 *buf, size_t count)
 {
     int r;
 
@@ -951,7 +951,7 @@ int sc_authenticate_challenge(sc_card_t *card, const u8 *response_data, size_t r
     if (r != SC_SUCCESS)
         LOG_FUNC_RETURN(card->ctx, r);
 
-    r = card->ops->authenticate_challenge(card, response_data, response_data_len);
+    r = card->ops->authenticate_challenge(card, buf, count);
 
     sc_unlock(card);
 

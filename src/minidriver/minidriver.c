@@ -3943,56 +3943,50 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
 	__in DWORD  cbResponseData,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
-    VENDOR_SPECIFIC *vs;
-    DWORD dwret;
-    int rv;
+	VENDOR_SPECIFIC *vs;
+	DWORD dwret;
+	int rv;
 
-    MD_FUNC_CALLED(pCardData, 1);
+	MD_FUNC_CALLED(pCardData, 1);
 
-    logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
-        (unsigned long)GetCurrentProcessId(),
-        (unsigned long)GetCurrentThreadId(), pCardData);
-    logprintf(pCardData, 1, "CardAuthenticateChallenge\n");
+	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
+			(unsigned long)GetCurrentProcessId(),
+			(unsigned long)GetCurrentThreadId(), pCardData);
+	logprintf(pCardData, 1, "CardAuthenticateChallenge\n");
 
-    if (!pCardData || !pbResponseData || !lock(pCardData))
-        MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	if (!pCardData || !pbResponseData || !lock(pCardData))
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-    dwret = check_card_reader_status(pCardData, "CardAuthenticateChallenge");
-    if (dwret != SCARD_S_SUCCESS)
-        goto err;
+	dwret = check_card_reader_status(pCardData, "CardAuthenticateChallenge");
+	if (dwret != SCARD_S_SUCCESS)
+		goto err;
 
-    vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
-    if (!vs) {
-        dwret = SCARD_E_INVALID_PARAMETER;
-        goto err;
-    }
+	vs = (VENDOR_SPECIFIC *)(pCardData->pvVendorSpecific);
+	if (!vs) {
+		dwret = SCARD_E_INVALID_PARAMETER;
+		goto err;
+	}
 
-    // Set attempts remaining to -1 (unknown) as per documentation
-    // because piv management key does not have attempts remaining
-    if (pcAttemptsRemaining)
-        *pcAttemptsRemaining = (DWORD)-1;
+	// Set attempts remaining to -1 (unknown) as per documentation
+	// because piv management key does not have attempts remaining
+	if (pcAttemptsRemaining)
+		*pcAttemptsRemaining = (DWORD)-1;
 
-    rv = sc_authenticate_challenge(vs->card, pbResponseData, cbResponseData);
-    
-    if (rv != SC_SUCCESS) {
-        logprintf(pCardData, 1, "Challenge-response authentication failed: %s\n", sc_strerror(rv));
-        
-        dwret = md_translate_OpenSC_to_Windows_error(rv, SCARD_E_UNEXPECTED);
-        if (rv == SC_ERROR_AUTH_METHOD_BLOCKED)
-            dwret = SCARD_W_CHV_BLOCKED;
-        else if (rv == SC_ERROR_PIN_CODE_INCORRECT)
-            dwret = SCARD_W_WRONG_CHV;
-        goto err;
-    }
+	rv = sc_authenticate_challenge(vs->card, pbResponseData, cbResponseData);
 
-    logprintf(pCardData, 1, "Challenge-response authentication successful\n");
-    dwret = SCARD_S_SUCCESS;
+	if (rv != SC_SUCCESS) {
+		logprintf(pCardData, 1, "Challenge-response authentication failed: %s\n", sc_strerror(rv));
+
+		dwret = md_translate_OpenSC_to_Windows_error(rv, SCARD_E_UNEXPECTED);
+		goto err;
+	}
+
+	dwret = SCARD_S_SUCCESS;
 
 err:
-    unlock(pCardData);
-    MD_FUNC_RETURN(pCardData, 1, dwret);
+	unlock(pCardData);
+	MD_FUNC_RETURN(pCardData, 1, dwret);
 }
-
 
 DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
 	__in LPWSTR pwszUserId,

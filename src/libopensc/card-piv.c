@@ -4467,7 +4467,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	}
 
 	/* NIST 800-73-3 says use 9B, previous versions used 00 */
-	r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
+	r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
 	/*
 	 * piv_get_challenge is called in a loop.
 	 * some cards may allow 1 challenge expecting it to be part of
@@ -4509,28 +4509,35 @@ err:
 static int piv_authenticate_challenge(sc_card_t *card, const u8 *response_data, size_t response_data_len)
 {
     u8 sbuf[4096];
+    u8 inner_buf[4096];
     int r;
-    u8 *p;
-    piv_private_data_t * priv = PIV_DATA(card);
-    
+    u8 *p_outer, *p_inner;
+    piv_private_data_t *priv = PIV_DATA(card);
+
     LOG_FUNC_CALLED(card->ctx);
 
-    // Build the TLV structure
-    p = sbuf;
-    
-    // Create 7C TLV wrapper
-    r = sc_asn1_put_tag(0x7C, NULL, response_data_len + 2, p, sizeof(sbuf), &p);
+    // Build inner TLV: 82 <len> <response_data>
+    p_inner = inner_buf;
+    r = sc_asn1_put_tag(0x82, response_data, response_data_len,
+                        p_inner, sizeof(inner_buf), &p_inner);
     if (r != SC_SUCCESS)
         LOG_FUNC_RETURN(card->ctx, r);
-        
-    // Create 82 TLV for the challenge response
-    r = sc_asn1_put_tag(0x82, response_data, response_data_len, p, sizeof(sbuf) - (p - sbuf), &p);
+
+    size_t inner_len = p_inner - inner_buf;
+
+    // Build outer TLV: 7C <len> <inner_tlv>
+    p_outer = sbuf;
+    r = sc_asn1_put_tag(0x7C, inner_buf, inner_len,
+                        p_outer, sizeof(sbuf), &p_outer);
     if (r != SC_SUCCESS)
         LOG_FUNC_RETURN(card->ctx, r);
-        
+
+    size_t total_len = p_outer - sbuf;
+
     // Send GENERAL AUTHENTICATE command
-    r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B, sbuf, p - sbuf, NULL, 0);
-    
+    r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B,
+                       sbuf, total_len, NULL, 0);
+
     LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -5604,6 +5611,8 @@ static int piv_match_card_continued(sc_card_t *card)
                                                          swissbit_version_buf[2];
                                 sc_log(card->ctx, "Swissbit card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->swissbit_version);
                         }
+						
+						card->mgmt_key_alg = piv_get_management_key_algorithm(card);
         }
 
         sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
@@ -6005,8 +6014,7 @@ static int piv_init(sc_card_t *card)
 	 */
 	piv_process_history(card);
 
-	priv->mgmt_key_alg = piv_get_management_key_algorithm(card);
-
+	priv->mgmt_key_alg = 0;
 	priv->pstate=PIV_STATE_NORMAL;
 	sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
