@@ -7029,16 +7029,23 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 
 	MD_FUNC_CALLED(pCardData, 1);
 
-	if (dwFlags != 0)
+	if (dwFlags & ~CARD_SECURE_KEY_INJECTION_NO_CARD_MODE)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-	if(pCardData->hSCardCtx == 0)   {
-		logprintf(pCardData, 0, "Invalid handle.\n");
-		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_HANDLE);
-	}
-	if(pCardData->hScard == 0)   {
-		logprintf(pCardData, 0, "Invalid handle.\n");
-		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_HANDLE);
+	if (!(dwFlags & CARD_SECURE_KEY_INJECTION_NO_CARD_MODE)) {
+		if (pCardData->hSCardCtx == 0) {
+			logprintf(pCardData, 0, "Invalid handle.\n");
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_HANDLE);
+		}
+		if (pCardData->hScard == 0) {
+			logprintf(pCardData, 0, "Invalid handle.\n");
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_HANDLE);
+		}
+	} else {
+		if (pCardData->dwVersion < CARD_DATA_VERSION_SEVEN)
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+		/* secure key injection not supported */
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
 	if (pCardData->pbAtr == NULL)
