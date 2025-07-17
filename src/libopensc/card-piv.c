@@ -5849,8 +5849,8 @@ piv_get_management_key_algorithm(sc_card_t *card)
 	algorithm = sc_asn1_find_tag(card->ctx, apdu.resp, apdu.resplen, 0x01,
 			&algorithm_tag_len);
 	if (!algorithm || algorithm_tag_len != 1) {
-		sc_log(card->ctx, "Cannot get key management algorithm");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
+		sc_log(card->ctx, "Cannot get key management algorithm, using default");
+		return 0;
 	}
 	return *algorithm;
 }
