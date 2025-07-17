@@ -1377,7 +1377,8 @@ int sc_put_data(struct sc_card *, unsigned int, const u8 *, size_t);
  */
 int sc_get_challenge(struct sc_card *card, u8 * rndout, size_t len);
 
-int sc_authenticate_challenge(struct sc_card_t *card, const u8 *buf, size_t count);
+int sc_authenticate_challenge(struct sc_card *card, const u8 *buf, size_t count
+);
 
 /********************************************************************/
 /*              ISO 7816-8 related functions                        */
