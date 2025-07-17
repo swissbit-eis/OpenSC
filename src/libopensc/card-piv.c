@@ -851,6 +851,7 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag);
 static int piv_logout(sc_card_t *card);
 static int piv_match_card_continued(sc_card_t *card);
 static int piv_obj_cache_free_entry(sc_card_t *card, int enumtag, int flags);
+static u8 piv_get_management_key_algorithm(sc_card_t *card);
 
 #ifdef ENABLE_PIV_SM
 static void piv_inc(u8 *counter, size_t size);
@@ -4494,39 +4495,44 @@ err:
 
 }
 
-static int piv_authenticate_challenge(sc_card_t *card, const u8 *response_data, size_t response_data_len)
+static int
+piv_authenticate_challenge(sc_card_t *card, const u8 *buf, size_t count)
 {
-    u8 sbuf[4096];
-    u8 inner_buf[4096];
-    int r;
-    u8 *p_outer, *p_inner;
-    piv_private_data_t *priv = PIV_DATA(card);
+	u8 sbuf[4096];
+	int r;
+	u8 *p;
+	piv_private_data_t *priv = PIV_DATA(card);
 
-    LOG_FUNC_CALLED(card->ctx);
+	LOG_FUNC_CALLED(card->ctx);
 
-    // Build inner TLV: 82 <len> <response_data>
-    p_inner = inner_buf;
-    r = sc_asn1_put_tag(0x82, response_data, response_data_len,
-                        p_inner, sizeof(inner_buf), &p_inner);
-    if (r != SC_SUCCESS)
-        LOG_FUNC_RETURN(card->ctx, r);
+	size_t inner_len, outer_len;
 
-    size_t inner_len = p_inner - inner_buf;
+	r = sc_asn1_put_tag(0x82, NULL, count,
+			NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	inner_len = (size_t)r;
 
-    // Build outer TLV: 7C <len> <inner_tlv>
-    p_outer = sbuf;
-    r = sc_asn1_put_tag(0x7C, inner_buf, inner_len,
-                        p_outer, sizeof(sbuf), &p_outer);
-    if (r != SC_SUCCESS)
-        LOG_FUNC_RETURN(card->ctx, r);
+	r = sc_asn1_put_tag(0x7C, NULL, inner_len,
+			NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	outer_len = (size_t)r;
 
-    size_t total_len = p_outer - sbuf;
+	if (outer_len > sizeof(sbuf))
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
 
-    // Send GENERAL AUTHENTICATE command
-    r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B,
-                       sbuf, total_len, NULL, 0);
+	p = sbuf;
+	r = sc_asn1_put_tag(0x7C, NULL, inner_len,
+			p, sizeof(sbuf), &p);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	r = sc_asn1_put_tag(0x82, buf, count,
+			p, sizeof(sbuf) - (p - sbuf), &p);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	size_t total_len = p - sbuf;
 
-    LOG_FUNC_RETURN(card->ctx, r);
+	r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B,
+			sbuf, total_len, NULL, 0);
+
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int
@@ -5595,7 +5601,7 @@ static int piv_match_card_continued(sc_card_t *card)
                                     (swissbit_version_buf[2] << 8) | swissbit_version_buf[3];
                                 sc_log(card->ctx, "Swissbit card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->swissbit_version);
                         }
-                        card->mgmt_key_alg = piv_get_management_key_algorithm(card);
+                        priv->mgmt_key_alg = piv_get_management_key_algorithm(card);
         }
 
         sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
@@ -5797,50 +5803,39 @@ err:
 /*
  * Get the algorithm of the management key for admin operations.
  */
-static u8 piv_get_management_key_algorithm(sc_card_t *card) {
-  int r;
+static u8
+piv_get_management_key_algorithm(sc_card_t *card)
+{
+	int r;
 
-  sc_apdu_t apdu;
-  sc_format_apdu(card, &apdu,
-                 SC_APDU_CASE_2_SHORT, // command with output data only
-                 0xF7,                 // INS: GET METADATA Card Command
-                 0x00,                 // P1
-                 0x9B                  // P2
-  );
+	sc_apdu_t apdu;
+	sc_format_apdu(card, &apdu,
+			SC_APDU_CASE_2_SHORT, // command with output data only
+			0xF7,		      // INS: GET METADATA Card Command
+			0x00,		      // P1
+			0x9B		      // P2
+	);
 
-  // The GET METADATA response for the management key slot consists of a list of
-  // TLVs. For the slot 0x9B, 4 tags are supported:
-  // 1. 0x01: Algorithm of the key
-  // 2. 0x02: PIN and touch policy
-  // 3. 0x03: Origin of the key
-  // 4. 0x05: Whether the management key has default value
-  //
-  // The response consists of 10 bytes:
-  //  - the algorithm TLV has 3 bytes (1 byte tag + 1 byte len + 1 byte length)
-  //  - the PIN and touch policy TLV has 4 bytes (1 byte tag + 1 byte len + 2
-  //  byte data)
-  //  - the origin TLV has 3 bytes (1 byte tag + 1 byte len + 1 byte data)
-  //  - the default TLV has 3 bytes (1 byte tag + 1 byte len + 1 byte data)
-  unsigned char rbuf[13];
-  apdu.resp = rbuf;
-  apdu.resplen = sizeof(rbuf);
-  apdu.le = sizeof(rbuf);
+	unsigned char rbuf[13];
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = sizeof(rbuf);
 
-  r = sc_transmit_apdu(card, &apdu);
-  LOG_TEST_RET(card->ctx, r, "Transmit GET METADATA APDU failed");
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "Transmit GET METADATA APDU failed");
 
-  r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-  LOG_TEST_RET(card->ctx, r, "GET METADATA command failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "GET METADATA command failed");
 
-  size_t algorithm_tag_len;
-  const u8 *algorithm;
-  algorithm = sc_asn1_find_tag(card->ctx, apdu.resp, apdu.resplen, 0x01,
-                               &algorithm_tag_len);
-  if (!algorithm || algorithm_tag_len != 1) {
-    sc_log(card->ctx, "Cannot get key management algorithm");
-    LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
-  }
-  return *algorithm;
+	size_t algorithm_tag_len;
+	const u8 *algorithm;
+	algorithm = sc_asn1_find_tag(card->ctx, apdu.resp, apdu.resplen, 0x01,
+			&algorithm_tag_len);
+	if (!algorithm || algorithm_tag_len != 1) {
+		sc_log(card->ctx, "Cannot get key management algorithm");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
+	}
+	return *algorithm;
 }
 
 static int piv_init(sc_card_t *card)
