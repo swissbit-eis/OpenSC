@@ -7056,17 +7056,17 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	if (!(dwFlags & CARD_SECURE_KEY_INJECTION_NO_CARD_MODE)) {
-		if( pCardData->hSCardCtx == 0)   {
+		if (pCardData->hSCardCtx == 0) {
 			logprintf(pCardData, 0, "Invalid handle.\n");
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_HANDLE);
 		}
-		if( pCardData->hScard == 0)   {
+		if (pCardData->hScard == 0) {
 			logprintf(pCardData, 0, "Invalid handle.\n");
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_HANDLE);
 		}
-	}
-	else
-	{
+	} else {
+		if (pCardData->dwVersion < CARD_DATA_VERSION_SEVEN)
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 		/* secure key injection not supported */
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
@@ -7075,12 +7075,15 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 	if ( pCardData->pwszCardName == NULL )
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
-	/* <2 length or >0x22 are not ISO compliant */
-	if (pCardData->cbAtr > 0x22 || pCardData->cbAtr < 0x2)
+	/* <2 length or >33 are not ISO compliant */
+	if (pCardData->cbAtr > 0x21 || pCardData->cbAtr < 0x2)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 	/* ATR beginning by 0x00 or 0xFF are not ISO compliant */
 	if (pCardData->pbAtr[0] == 0xFF || pCardData->pbAtr[0] == 0x00)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNKNOWN_CARD);
+	/* 2 bytes ATR is not a known card to microsoft minidriver*/
+	if (pCardData->cbAtr == 2)
+	    MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNKNOWN_CARD);
 	/* Memory management functions */
 	if ( ( pCardData->pfnCspAlloc   == NULL ) ||
 		( pCardData->pfnCspReAlloc == NULL ) ||
