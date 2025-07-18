@@ -3245,6 +3245,7 @@ static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
 		case SC_ERROR_AUTH_METHOD_BLOCKED:
 			return SCARD_W_CHV_BLOCKED;
 		case SC_ERROR_PIN_CODE_INCORRECT:
+		case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
 			return SCARD_W_WRONG_CHV;
 
 		/* Returned by OpenSC library when called with invalid arguments */
