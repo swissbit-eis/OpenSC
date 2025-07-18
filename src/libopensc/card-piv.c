@@ -853,7 +853,7 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag);
 static int piv_logout(sc_card_t *card);
 static int piv_match_card_continued(sc_card_t *card);
 static int piv_obj_cache_free_entry(sc_card_t *card, int enumtag, int flags);
-static u8 piv_get_management_key_algorithm(sc_card_t *card);
+static int piv_process_management_key_algorithm(sc_card_t *card);
 
 #ifdef ENABLE_PIV_SM
 static void piv_inc(u8 *counter, size_t size);
@@ -5530,6 +5530,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	/* TODO Dual CAC/PIV are bases on 800-73-1 where priv->pin_preference = 0. need to check later */
 	priv->logged_in = SC_PIN_STATE_UNKNOWN;
 	priv->pstate = PIV_STATE_MATCH;
+	priv->mgmt_key_alg = 0;
 
 #ifdef ENABLE_PIV_SM
 	memset(&card->sm_ctx, 0, sizeof card->sm_ctx);
@@ -5617,9 +5618,10 @@ static int piv_match_card_continued(sc_card_t *card)
                                                          swissbit_version_buf[2];
                                 sc_log(card->ctx, "Swissbit card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->swissbit_version);
                         }
-                        priv->mgmt_key_alg = piv_get_management_key_algorithm(card);
+                        piv_process_management_key_algorithm(card);
         }
 
+        sc_log(card->ctx, "Management key algorithm is 0x%08x",priv->mgmt_key_alg);
         sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
 	 /* We now know PIV AID is active, test CCC object. 800-73-* say CCC is required */
@@ -5820,8 +5822,8 @@ err:
 /*
  * Get the algorithm of the management key for admin operations.
  */
-static u8
-piv_get_management_key_algorithm(sc_card_t *card)
+static int
+piv_process_management_key_algorithm(sc_card_t *card)
 {
 	int r;
 
@@ -5849,10 +5851,13 @@ piv_get_management_key_algorithm(sc_card_t *card)
 	algorithm = sc_asn1_find_tag(card->ctx, apdu.resp, apdu.resplen, 0x01,
 			&algorithm_tag_len);
 	if (!algorithm || algorithm_tag_len != 1) {
-		sc_log(card->ctx, "Cannot get key management algorithm, using default");
-		return 0;
+		sc_log(card->ctx, "Cannot get key management algorithm.");
+		return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 	}
-	return *algorithm;
+
+	piv_private_data_t *priv = PIV_DATA(card);
+	priv->mgmt_key_alg = *algorithm;
+	return SC_SUCCESS;
 }
 
 static int piv_init(sc_card_t *card)
@@ -6008,7 +6013,6 @@ static int piv_init(sc_card_t *card)
 	 */
 	piv_process_history(card);
 
-	priv->mgmt_key_alg = 0;
 	priv->pstate=PIV_STATE_NORMAL;
 	sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
