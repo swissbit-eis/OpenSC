@@ -3927,8 +3927,8 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
 		  (unsigned long)GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardAuthenticateChallenge\n");
 
-    if (!pCardData || !pbResponseData || !cbResponseData || !lock(pCardData))
-        MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	if (!pCardData || !pbResponseData || !cbResponseData || !lock(pCardData))
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	dwret = check_card_reader_status(pCardData, "CardAuthenticateChallenge");
 	if (dwret != SCARD_S_SUCCESS)
