@@ -7083,7 +7083,7 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNKNOWN_CARD);
 	/* 2 bytes ATR is not a known card to microsoft minidriver*/
 	if (pCardData->cbAtr == 2)
-	    MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNKNOWN_CARD);
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNKNOWN_CARD);
 	/* Memory management functions */
 	if ( ( pCardData->pfnCspAlloc   == NULL ) ||
 		( pCardData->pfnCspReAlloc == NULL ) ||
