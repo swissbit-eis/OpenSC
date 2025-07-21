@@ -733,7 +733,7 @@ struct sc_card_operations {
 	 * @return number of random bytes successfully initialized (i.e. `count` or less bytes) or an error code
 	 */
 	int (*get_challenge)(struct sc_card *card, u8 * buf, size_t count);
-    
+
 	/**
 	 * @brief Authenticate a challenge
 	 *
