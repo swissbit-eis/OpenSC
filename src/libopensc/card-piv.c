@@ -415,6 +415,7 @@ typedef struct piv_private_data {
 	unsigned int pin_policy; /* from discovery */
 	unsigned int init_flags;
 	u8  csID; /* 800-73-4 Cipher Suite ID 0x27 or 0x2E */
+	u8 mgmt_key_alg;
 #ifdef ENABLE_PIV_SM
 	cipher_suite_t *cs; /* active cipher_suite */
 	piv_cvc_t sm_cvc;  /* 800-73-4:  SM CVC Table 15 */
@@ -852,6 +853,7 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag);
 static int piv_logout(sc_card_t *card);
 static int piv_match_card_continued(sc_card_t *card);
 static int piv_obj_cache_free_entry(sc_card_t *card, int enumtag, int flags);
+static int piv_process_management_key_algorithm(sc_card_t *card);
 
 #ifdef ENABLE_PIV_SM
 static void piv_inc(u8 *counter, size_t size);
@@ -4466,7 +4468,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	}
 
 	/* NIST 800-73-3 says use 9B, previous versions used 00 */
-	r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
+	r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
 	/*
 	 * piv_get_challenge is called in a loop.
 	 * some cards may allow 1 challenge expecting it to be part of
@@ -4475,9 +4477,9 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	 * Now that the card returned error, we can try one more time.
 	 */
 	 if (r == SC_ERROR_INCORRECT_PARAMETERS) {
-		r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
-		if (r == SC_ERROR_INCORRECT_PARAMETERS) {
-			r = SC_ERROR_NOT_SUPPORTED;
+		 r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
+		 if (r == SC_ERROR_INCORRECT_PARAMETERS) {
+			 r = SC_ERROR_NOT_SUPPORTED;
 		}
 	}
 	LOG_TEST_GOTO_ERR(card->ctx, r, "GENERAL AUTHENTICATE failed");
@@ -4503,6 +4505,46 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 err:
 	LOG_FUNC_RETURN(card->ctx, r);
 
+}
+
+static int
+piv_authenticate_challenge(sc_card_t *card, const u8 *buf, size_t count)
+{
+	u8 sbuf[4096];
+	int r;
+	u8 *p;
+	piv_private_data_t *priv = PIV_DATA(card);
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	size_t inner_len, outer_len;
+
+	r = sc_asn1_put_tag(0x82, NULL, count,
+			NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	inner_len = (size_t)r;
+
+	r = sc_asn1_put_tag(0x7C, NULL, inner_len,
+			NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	outer_len = (size_t)r;
+
+	if (outer_len > sizeof(sbuf))
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+
+	p = sbuf;
+	r = sc_asn1_put_tag(0x7C, NULL, inner_len,
+			p, sizeof(sbuf), &p);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	r = sc_asn1_put_tag(0x82, buf, count,
+			p, sizeof(sbuf) - (p - sbuf), &p);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	size_t total_len = p - sbuf;
+
+	r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B,
+			sbuf, total_len, NULL, 0);
+
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int
@@ -5488,6 +5530,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	/* TODO Dual CAC/PIV are bases on 800-73-1 where priv->pin_preference = 0. need to check later */
 	priv->logged_in = SC_PIN_STATE_UNKNOWN;
 	priv->pstate = PIV_STATE_MATCH;
+	priv->mgmt_key_alg = 0;
 
 #ifdef ENABLE_PIV_SM
 	memset(&card->sm_ctx, 0, sizeof card->sm_ctx);
@@ -5575,9 +5618,11 @@ static int piv_match_card_continued(sc_card_t *card)
                                     (swissbit_version_buf[2] << 8) | swissbit_version_buf[3];
                                 sc_log(card->ctx, "Swissbit card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->swissbit_version);
                         }
+                       piv_process_management_key_algorithm(card);
         }
 
-        sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
+       sc_log(card->ctx, "Management key algorithm is 0x%08x",priv->mgmt_key_alg);
+       sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
 	 /* We now know PIV AID is active, test CCC object. 800-73-* say CCC is required */
 	 /* CCC not readable over contactless, unless using VCI. but dont need CCC for SC_CARD_TYPE_PIV_II_800_73_4 */
@@ -5774,6 +5819,46 @@ err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+/*
+ * Get the algorithm of the management key for admin operations.
+ */
+static int
+piv_process_management_key_algorithm(sc_card_t *card)
+{
+	int r;
+
+	sc_apdu_t apdu;
+	sc_format_apdu(card, &apdu,
+			SC_APDU_CASE_2_SHORT, // command with output data only
+			0xF7,		      // INS: GET METADATA Card Command
+			0x00,		      // P1
+			0x9B		      // P2
+	);
+
+	unsigned char rbuf[13];
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = sizeof(rbuf);
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "Transmit GET METADATA APDU failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "GET METADATA command failed");
+
+	size_t algorithm_tag_len;
+	const u8 *algorithm;
+	algorithm = sc_asn1_find_tag(card->ctx, apdu.resp, apdu.resplen, 0x01,
+			&algorithm_tag_len);
+	if (!algorithm || algorithm_tag_len != 1) {
+		sc_log(card->ctx, "Cannot get key management algorithm.");
+		return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
+	}
+
+	piv_private_data_t *priv = PIV_DATA(card);
+	priv->mgmt_key_alg = *algorithm;
+	return SC_SUCCESS;
+}
 
 static int piv_init(sc_card_t *card)
 {
@@ -6333,6 +6418,7 @@ static struct sc_card_driver * sc_get_driver(void)
 
 	piv_ops.select_file =  piv_select_file; /* must use get/put, could emulate? */
 	piv_ops.get_challenge = piv_get_challenge;
+	piv_ops.authenticate_challenge = piv_authenticate_challenge;
 	piv_ops.logout = piv_logout;
 	piv_ops.read_binary = piv_read_binary;
 	piv_ops.write_binary = piv_write_binary;
