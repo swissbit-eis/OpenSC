@@ -3245,6 +3245,7 @@ static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
 		case SC_ERROR_AUTH_METHOD_BLOCKED:
 			return SCARD_W_CHV_BLOCKED;
 		case SC_ERROR_PIN_CODE_INCORRECT:
+		case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
 			return SCARD_W_WRONG_CHV;
 
 		/* Returned by OpenSC library when called with invalid arguments */
@@ -3926,7 +3927,7 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
 		  (unsigned long)GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardAuthenticateChallenge\n");
 
-	if (!pCardData || !pbResponseData || !lock(pCardData))
+	if (!pCardData || !pbResponseData || !cbResponseData || !lock(pCardData))
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	dwret = check_card_reader_status(pCardData, "CardAuthenticateChallenge");
