@@ -96,7 +96,7 @@
 /* store the instance given at DllMain when attached to access internal resources */
 HINSTANCE g_inst;
 
-#define MD_MINIMUM_VERSION_SUPPORTED 4
+#define MD_MINIMUM_VERSION_SUPPORTED 7
 #define MD_CURRENT_VERSION_SUPPORTED 7
 
 #define NULLSTR(a) (a == NULL ? "<NULL>" : a)
@@ -797,6 +797,8 @@ md_is_read_only(PCARD_DATA pCardData)
 			}
 		}
 	}
+
+	ret = TRUE;
 
 	return md_get_config_bool(pCardData, "read_only", ret);
 }
