@@ -798,8 +798,6 @@ md_is_read_only(PCARD_DATA pCardData)
 		}
 	}
 
-	ret = TRUE;
-
 	return md_get_config_bool(pCardData, "read_only", ret);
 }
 
