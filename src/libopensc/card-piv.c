@@ -5572,7 +5572,7 @@ static int piv_match_card_continued(sc_card_t *card)
                         r2 = sc_transmit_apdu(card, &apdu); /* on error swissbit_version == 0 */
                         if (apdu.resplen >= 3) {
                                 priv->swissbit_version = (swissbit_version_buf[0] << 16) | (swissbit_version_buf[1] << 8) |
-                                    swissbit_version_buf[2];
+                                                         swissbit_version_buf[2];
                                 sc_log(card->ctx, "Swissbit card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->swissbit_version);
                         }
         }
