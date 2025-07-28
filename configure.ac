@@ -998,14 +998,11 @@ if test "${enable_sm}" = "yes"; then
 	esac
 fi
 
-case "${host}" in
-	*x86*)
-		DEFAULT_INSTALL_DIR="C:\\Program Files (x86)\\OpenSC Project\\OpenSC\\"
-	;;
-	*)
-		DEFAULT_INSTALL_DIR="C:\\Program Files\\OpenSC Project\\OpenSC\\"
-	;;
-esac
+if test "${PLATFORM}" = "x86"; then
+	DEFAULT_INSTALL_DIR="C:\\Program Files (x86)\\OpenSC Project\\OpenSC\\"
+else
+	DEFAULT_INSTALL_DIR="C:\\Program Files\\OpenSC Project\\OpenSC\\"
+fi
 
 if test "${with_pkcs11_provider}" = "detect"; then
 	if test "${WIN32}" != "yes"; then
