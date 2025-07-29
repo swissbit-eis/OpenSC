@@ -142,6 +142,7 @@ HINSTANCE g_inst;
 #define SCARD_E_UNSUPPORTED_FEATURE	0x80100022L
 #define SCARD_E_NO_MEMORY		0x80100006L
 #define SCARD_W_WRONG_CHV		0x8010006BL
+#define SCARD_E_DIR_NOT_FOUND 		0x80100023L
 #define SCARD_E_FILE_NOT_FOUND		0x80100024L
 #define SCARD_E_UNKNOWN_CARD		0x8010000DL
 #define SCARD_F_UNKNOWN_ERROR		0x80100014L
@@ -1089,7 +1090,7 @@ md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file *
 	}
 	else if (!dir)   {
 		logprintf(pCardData, 2, "directory '%s' not found\n", parent ? parent : "<null>");
-		return SCARD_E_INVALID_PARAMETER;
+		return SCARD_E_DIR_NOT_FOUND;
 	}
 
 	for (file = dir->files; file!=NULL;)   {
@@ -4271,7 +4272,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 		  NULLSTR(pszDirectoryName), NULLSTR(pszFileName),
 		  (unsigned long)dwFlags, pcbData, ppbData);
 
-	if (!pszFileName || !strlen(pszFileName) || dwFlags) {
+	if (!pszFileName || !strlen(pszFileName) || dwFlags || !ppbData || !pcbData) {
 		dwret = SCARD_E_INVALID_PARAMETER;
 		goto err;
 	}
