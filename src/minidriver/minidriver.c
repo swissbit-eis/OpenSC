@@ -142,7 +142,7 @@ HINSTANCE g_inst;
 #define SCARD_E_UNSUPPORTED_FEATURE	0x80100022L
 #define SCARD_E_NO_MEMORY		0x80100006L
 #define SCARD_W_WRONG_CHV		0x8010006BL
-#define SCARD_E_DIR_NOT_FOUND 		0x80100023L
+#define SCARD_E_DIR_NOT_FOUND		0x80100023L
 #define SCARD_E_FILE_NOT_FOUND		0x80100024L
 #define SCARD_E_UNKNOWN_CARD		0x8010000DL
 #define SCARD_F_UNKNOWN_ERROR		0x80100014L
@@ -4281,10 +4281,9 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 	if (dwret != SCARD_S_SUCCESS)
 		goto err;
 
-	md_fs_find_file(pCardData, pszDirectoryName, pszFileName, &file);
+	dwret = md_fs_find_file(pCardData, pszDirectoryName, pszFileName, &file);
 	if (!file)   {
 		logprintf(pCardData, 2, "CardReadFile(): file '%s' not found in '%s'\n", NULLSTR(pszFileName), NULLSTR(pszDirectoryName));
-		dwret = SCARD_E_FILE_NOT_FOUND;
 		goto err;
 	}
 
