@@ -1079,7 +1079,7 @@ md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file *
 	if (out)
 		*out = NULL;
 
-	if (!pCardData || !name)
+	if (!pCardData || !name || !*name)
 		return SCARD_E_INVALID_PARAMETER;
 
 	dwret = md_fs_find_directory(pCardData, NULL, parent, &dir);
@@ -4473,8 +4473,12 @@ DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData,
 
 	MD_FUNC_CALLED(pCardData, 1);
 
-	if(!pCardData  || !lock(pCardData))
+	if (!pCardData || !lock(pCardData) || !pCardFileInfo)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
+	if (pCardFileInfo->dwVersion > CARD_FILE_INFO_CURRENT_VERSION) {
+		MD_FUNC_RETURN(pCardData, 1, ERROR_REVISION_MISMATCH);
+	}
 
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
@@ -4485,10 +4489,9 @@ DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData,
 	if (dwret != SCARD_S_SUCCESS)
 		goto err;
 
-	md_fs_find_file(pCardData, pszDirectoryName, pszFileName, &file);
+	dwret = md_fs_find_file(pCardData, pszDirectoryName, pszFileName, &file);
 	if (!file)   {
 		logprintf(pCardData, 2, "CardWriteFile(): file '%s' not found in '%s'\n", NULLSTR(pszFileName), NULLSTR(pszDirectoryName));
-		dwret = SCARD_E_FILE_NOT_FOUND;
 		goto err;
 	}
 
