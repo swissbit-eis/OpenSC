@@ -4511,6 +4511,9 @@ DWORD WINAPI CardQueryFreeSpace(__in PCARD_DATA pCardData, __in DWORD dwFlags,
 
 	MD_FUNC_CALLED(pCardData, 1);
 
+	if (!pCardData || !lock(pCardData) || dwFlags != 0 || !pCardFreeSpaceInfo)
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
 		  (unsigned long)GetCurrentThreadId(), pCardData);
@@ -4518,9 +4521,6 @@ DWORD WINAPI CardQueryFreeSpace(__in PCARD_DATA pCardData, __in DWORD dwFlags,
 		  "CardQueryFreeSpace %p, dwFlags=%lX, version=%lX\n",
 		  pCardFreeSpaceInfo, (unsigned long)dwFlags,
 		  (unsigned long)pCardFreeSpaceInfo->dwVersion);
-
-	if (!pCardData || !lock(pCardData))
-		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	dwret = check_card_status(pCardData, "CardQueryFreeSpace");
 	if (dwret != SCARD_S_SUCCESS)
