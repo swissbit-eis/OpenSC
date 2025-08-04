@@ -4431,10 +4431,9 @@ DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData,
 	if (!pszDirectoryName || !strlen(pszDirectoryName))
 		dir = &vs->root;
 	else
-		md_fs_find_directory(pCardData, NULL, pszDirectoryName, &dir);
+		dwret = md_fs_find_directory(pCardData, NULL, pszDirectoryName, &dir);
 	if (!dir)   {
 		logprintf(pCardData, 2, "enum files() failed: directory '%s' not found\n", NULLSTR(pszDirectoryName));
-		dwret = SCARD_E_FILE_NOT_FOUND;
 		goto err;
 	}
 
