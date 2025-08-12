@@ -3246,6 +3246,7 @@ static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
 		case SC_ERROR_NOT_ENOUGH_MEMORY:
 			return SCARD_E_NO_MEMORY;
 		case SC_ERROR_NOT_ALLOWED:
+		case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
 			return SCARD_W_SECURITY_VIOLATION;
 		case SC_ERROR_AUTH_METHOD_BLOCKED:
 			return SCARD_W_CHV_BLOCKED;
@@ -4935,7 +4936,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
 		else if (hashAlg !=0) {
 			logprintf(pCardData, 0, "bogus aiHashAlg %i\n", hashAlg);
-			dwret = SCARD_E_UNSUPPORTED_FEATURE;
+			dwret = SCARD_E_INVALID_PARAMETER;
 			goto err;
 		}
 	} else {
@@ -5030,9 +5031,9 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				/* ECDSA_P384 */
 				pInfo->cbSignedData = 384 / 8 * 2;
 				break;
-			case 512:
-				/* ECDSA_P512 : special case !!!*/
-				pInfo->cbSignedData = 132;
+			case 521:
+				/* ECDSA_P521: special case !!!*/
+				pInfo->cbSignedData = 2 * ((521 + 7) / 8);
 				break;
 			case 521:
 				/* ECDSA_P521 : special case !!!*/
@@ -5046,6 +5047,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				goto err;
 		}
 		opt_crypt_flags &= ~SC_ALGORITHM_RSA_PADS; /* EC does not use this */
+		opt_crypt_flags &= SC_ALGORITHM_ECDSA_HASHES;
 	} else {
 		logprintf(pCardData, 0, "invalid private key\n");
 		dwret = SCARD_E_INVALID_VALUE;
