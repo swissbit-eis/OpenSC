@@ -5032,10 +5032,6 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				pInfo->cbSignedData = 384 / 8 * 2;
 				break;
 			case 521:
-				/* ECDSA_P521: special case !!!*/
-				pInfo->cbSignedData = 2 * ((521 + 7) / 8);
-				break;
-			case 521:
 				/* ECDSA_P521 : special case !!!*/
 				pInfo->cbSignedData = 132;
 				break;
