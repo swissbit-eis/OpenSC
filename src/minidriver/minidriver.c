@@ -3247,6 +3247,7 @@ static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
 			return SCARD_E_NO_MEMORY;
 		case SC_ERROR_NOT_ALLOWED:
 		case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+		case SC_ERROR_SM_NO_SESSION_KEYS:
 			return SCARD_W_SECURITY_VIOLATION;
 		case SC_ERROR_AUTH_METHOD_BLOCKED:
 			return SCARD_W_CHV_BLOCKED;
