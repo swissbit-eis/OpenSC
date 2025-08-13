@@ -206,11 +206,28 @@ int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
 		sc_log(ctx, "invalid response: SW1 SW2 missing");
 		return SC_ERROR_INTERNAL;
 	}
+
+	if (!apdu) {
+		sc_log(ctx, "ERROR: apdu is NULL");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	if (!apdu->resp && apdu->resplen > 0) {
+		sc_log(ctx, "ERROR: apdu->resp is NULL but resplen=%zu", apdu->resplen);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
 	/* set the SW1 and SW2 status bytes (the last two bytes of
 	 * the response */
 	apdu->sw1 = (unsigned int)buf[len - 2];
 	apdu->sw2 = (unsigned int)buf[len - 1];
 	len -= 2;
+
+	if (!apdu->resp && apdu->resplen == 0) {
+		sc_log(ctx, "No response expected.");
+		return SC_SUCCESS;
+	}
+
 	/* set output length and copy the returned data if necessary */
 	if (len != apdu->resplen)
 		apdu->resplen = len;
