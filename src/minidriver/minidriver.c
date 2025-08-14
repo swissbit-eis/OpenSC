@@ -6728,10 +6728,10 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 	if (!wszProperty)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-	if (dwFlags)
+	if (dwFlags && wcscmp(wszProperty, CP_CARD_PIN_STRENGTH_VERIFY) != 0 && wcscmp(wszProperty, CP_CARD_PIN_INFO) != 0)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-	if (!cbDataLen)
+	if (wcscmp(wszProperty, CP_PIN_CONTEXT_STRING) != 0 && (!cbDataLen || !pbData))
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	/* the following properties cannot be set according to the minidriver specifications */
