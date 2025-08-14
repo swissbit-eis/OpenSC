@@ -6422,11 +6422,14 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	if (wcscmp(CP_CARD_FREE_SPACE,wszProperty) == 0)   {
+		if (dwFlags != 0)
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
 		PCARD_FREE_SPACE_INFO pCardFreeSpaceInfo = (PCARD_FREE_SPACE_INFO )pbData;
 		if (pdwDataLen)
 			*pdwDataLen = sizeof(*pCardFreeSpaceInfo);
 		if (cbData < sizeof(*pCardFreeSpaceInfo))
-			MD_FUNC_RETURN(pCardData, 1, SCARD_E_NO_MEMORY);
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INSUFFICIENT_BUFFER);
 
 		dwret = md_free_space(pCardData, pCardFreeSpaceInfo);
 		if (dwret != SCARD_S_SUCCESS)   {
@@ -6458,6 +6461,9 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 			MD_FUNC_RETURN(pCardData, 1, dwret);
 	}
 	else if (wcscmp(CP_CARD_READ_ONLY, wszProperty) == 0)   {
+		if (dwFlags != 0)
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
 		BOOL *p = (BOOL *)pbData;
 		if (pdwDataLen)
 			*pdwDataLen = sizeof(*p);
@@ -6467,6 +6473,9 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		*p = md_is_read_only(pCardData);
 	}
 	else if (wcscmp(CP_CARD_CACHE_MODE, wszProperty) == 0)   {
+		if (dwFlags != 0)
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
 		DWORD *p = (DWORD *)pbData;
 		if (pdwDataLen)
 			*pdwDataLen = sizeof(*p);
@@ -6475,6 +6484,9 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		*p = CP_CACHE_MODE_NO_CACHE;
 	}
 	else if (wcscmp(CP_SUPPORTS_WIN_X509_ENROLLMENT, wszProperty) == 0)   {
+		if (dwFlags != 0)
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
 		BOOL *p = (BOOL *)pbData;
 		if (pdwDataLen)
 			*pdwDataLen = sizeof(*p);
@@ -6483,6 +6495,9 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		*p = md_is_supports_X509_enrollment(pCardData);
 	}
 	else if (wcscmp(CP_CARD_GUID, wszProperty) == 0)   {
+		if (dwFlags != 0)
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
 		struct md_file *cardid = NULL;
 
 		md_fs_find_file(pCardData, NULL, "cardid", &cardid);
@@ -6499,6 +6514,9 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		CopyMemory(pbData, cardid->blob, cardid->size);
 	}
 	else if (wcscmp(CP_CARD_SERIAL_NO, wszProperty) == 0)   {
+		if (dwFlags != 0)
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
 		unsigned char buf[64];
 		size_t buf_len = sizeof(buf);
 
@@ -6548,15 +6566,9 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		switch (dwFlags)   {
 			case ROLE_EVERYONE:
 				logprintf(pCardData, 2,
-					"returning info on PIN ROLE_EVERYONE [%lu]\n",
-					(unsigned long)dwFlags);
-				p->PinType = 0;   /* There is no pin, so don't need reader capabilities */
-				p->PinPurpose = 0; /* It can not be PrimaryCardPin */
-				p->PinCachePolicy.dwVersion = PIN_CACHE_POLICY_CURRENT_VERSION;
-				p->PinCachePolicy.PinCachePolicyType = PinCacheNone;
-				p->PinCachePolicy.dwPinCachePolicyInfo = 0;
-				p->dwChangePermission = 0;
-				break;
+						"PIN ROLE_EVERYONE [%lu] has no pin info\n",
+						(unsigned long)dwFlags);
+				MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 			case ROLE_ADMIN:
 				logprintf(pCardData, 2,
@@ -6602,6 +6614,9 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		}
 	}
 	else if (wcscmp(CP_CARD_LIST_PINS,wszProperty) == 0)   {
+		if (dwFlags != 0)
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
 		PPIN_SET p = (PPIN_SET) pbData;
 		size_t pinidx;
 		if (pdwDataLen)
@@ -6667,11 +6682,15 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		logprintf(pCardData, 3, "Unsupported property '%S'\n", wszProperty);
 		//TODO
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
-	}
-	else   {
+	} else if (wcscmp(CP_CARD_PIN_STRENGTH_CHANGE, wszProperty) == 0) {
+		logprintf(pCardData, 3, "Unsupported property '%S'\n", wszProperty);
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	} else if (wcscmp(CP_CARD_PIN_STRENGTH_UNBLOCK, wszProperty) == 0) {
+		logprintf(pCardData, 3, "Unsupported property '%S'\n", wszProperty);
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	} else {
 		logprintf(pCardData, 3, "Unsupported property '%S'\n", wszProperty);
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
-
 	}
 
 	logprintf(pCardData, 7, "returns '%S' ", wszProperty);
