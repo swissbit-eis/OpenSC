@@ -3661,7 +3661,7 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 	size_t fsize;
 	FILE *f = NULL;
 	char * keyfilename = NULL;
-	size_t expected_keylen;
+	int expected_keylen;
 	size_t keylen, readlen;
 	u8 * keybuf = NULL;
 	u8 * tkey = NULL;
@@ -3694,43 +3694,46 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 	*p++ = 0x41;
 	*p++ = 0x4B;
 
+	/* Fetch Status Object: 53 <len> <key ref> <alg id> <key len> <key data> */
 	r2 = piv_general_io(card, 0xCB, 0x3F, 0x00, sbuf, p - sbuf, rbuf, sizeof rbuf);
 	if (r2 >= 0) {
 
 		/* Remove the encompassing outer TLV of 0x53 and get the data */
 		body = sc_asn1_find_tag(card->ctx, rbuf, r2, 0x53, &body_len);
 		if (!body || rbuf[0] != 0x53) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Key Status Data response of NULL\n");
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status Data response of NULL\n");
 			r =  SC_ERROR_INVALID_DATA;
 			goto err;
 		}
 
 		if (body_len < 4) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Key Status Data must be at least 4 bytes\n");
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status Data must be at least 4 bytes\n");
 			r =  SC_ERROR_INVALID_DATA;
 			goto err;
 		}
 
 		if (body[0] != 0x9B) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Key Status Data unexpected slot\n");
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status Data unexpected slot\n");
 			r =  SC_ERROR_INVALID_DATA;
 			goto err;
 		}
 
 		if (body[1] != alg_id) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Key Status Data unexpected algorithm\n");
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status Data unexpected algorithm\n");
 			r =  SC_ERROR_INVALID_DATA;
 			goto err;
 		}
 
 		if (((body[2] << 8) | body[3]) != expected_keylen || body_len != expected_keylen + 4) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Key Status unexpected length\n");
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status unexpected key length\n");
 			r =  SC_ERROR_INVALID_DATA;
 			goto err;
 		}
 
 		memcpy(tkey, body + 4, expected_keylen);
 	} else {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Failed to get key data: %d. Falling back to reading PIV_EXT_AUTH_KEY.\n", r2);
+
 		keyfilename = (char *)getenv("PIV_EXT_AUTH_KEY");
 
 		if (keyfilename == NULL) {
