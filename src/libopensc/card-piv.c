@@ -3785,7 +3785,7 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 			sc_right_trim(keybuf, fsize);
 			keylen = expected_keylen;
 			r = sc_hex_to_bin((char *)keybuf, tkey, &keylen);
-			if (keylen != expected_keylen || r != 0 ) {
+			if (keylen != expected_keylen || r != 0) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error formatting key\n");
 				if (r == 0)
 					r = SC_ERROR_INCOMPATIBLE_KEY;
