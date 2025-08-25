@@ -3661,7 +3661,7 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 	size_t fsize;
 	FILE *f = NULL;
 	char * keyfilename = NULL;
-	int expected_keylen;
+	size_t expected_keylen;
 	size_t keylen, readlen;
 	u8 * keybuf = NULL;
 	u8 * tkey = NULL;
@@ -3724,7 +3724,7 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 			goto err;
 		}
 
-		if (((body[2] << 8) | body[3]) != expected_keylen || body_len != expected_keylen + 4) {
+		if ((size_t) ((body[2] << 8) | body[3]) != expected_keylen || body_len != expected_keylen + 4) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status unexpected key length\n");
 			r =  SC_ERROR_INVALID_DATA;
 			goto err;
