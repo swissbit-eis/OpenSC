@@ -3702,31 +3702,31 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 		body = sc_asn1_find_tag(card->ctx, rbuf, r2, 0x53, &body_len);
 		if (!body || rbuf[0] != 0x53) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status Data response of NULL\n");
-			r =  SC_ERROR_INVALID_DATA;
+			r = SC_ERROR_INVALID_DATA;
 			goto err;
 		}
 
 		if (body_len < 4) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status Data must be at least 4 bytes\n");
-			r =  SC_ERROR_INVALID_DATA;
+			r = SC_ERROR_INVALID_DATA;
 			goto err;
 		}
 
 		if (body[0] != 0x9B) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status Data unexpected slot\n");
-			r =  SC_ERROR_INVALID_DATA;
+			r = SC_ERROR_INVALID_DATA;
 			goto err;
 		}
 
 		if (body[1] != alg_id) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status Data unexpected algorithm\n");
-			r =  SC_ERROR_INVALID_DATA;
+			r = SC_ERROR_INVALID_DATA;
 			goto err;
 		}
 
-		if ((size_t) ((body[2] << 8) | body[3]) != expected_keylen || body_len != expected_keylen + 4) {
+		if ((size_t)((body[2] << 8) | body[3]) != expected_keylen || body_len != expected_keylen + 4) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status unexpected key length\n");
-			r =  SC_ERROR_INVALID_DATA;
+			r = SC_ERROR_INVALID_DATA;
 			goto err;
 		}
 
@@ -3738,7 +3738,7 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 
 		if (keyfilename == NULL) {
 			sc_log(card->ctx,
-				"Unable to get PIV_EXT_AUTH_KEY=(null) for general_external_authenticate");
+					"Unable to get PIV_EXT_AUTH_KEY=(null) for general_external_authenticate");
 			r = SC_ERROR_FILE_NOT_FOUND;
 			goto err;
 		}
@@ -3753,22 +3753,22 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 		if (0 > fseek(f, 0L, SEEK_END))
 			r = SC_ERROR_INTERNAL;
 		fsize = ftell(f);
-		if (0 > (long) fsize)
+		if (0 > (long)fsize)
 			r = SC_ERROR_INTERNAL;
 		if (0 > fseek(f, 0L, SEEK_SET))
 			r = SC_ERROR_INTERNAL;
-		if(r) {
+		if (r) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read %s\n", keyfilename);
 			goto err;
 		}
 
-		keybuf = malloc(fsize+1); /* if not binary, need null to make it a string */
+		keybuf = malloc(fsize + 1); /* if not binary, need null to make it a string */
 		if (!keybuf) {
 			sc_log(card->ctx, " Unable to allocate key memory");
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
-		keybuf[fsize] = 0x00;    /* in case it is text need null */
+		keybuf[fsize] = 0x00; /* in case it is text need null */
 
 		if ((readlen = fread(keybuf, 1, fsize, f)) != fsize) {
 			sc_log(card->ctx, " Unable to read key\n");
@@ -3785,7 +3785,7 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 			sc_right_trim(keybuf, fsize);
 			keylen = expected_keylen;
 			r = sc_hex_to_bin((char *)keybuf, tkey, &keylen);
-			if (keylen !=expected_keylen || r != 0 ) {
+			if (keylen != expected_keylen || r != 0 ) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error formatting key\n");
 				if (r == 0)
 					r = SC_ERROR_INCOMPATIBLE_KEY;
