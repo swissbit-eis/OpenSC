@@ -4147,7 +4147,7 @@ DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 	logprintf(pCardData, 1, "CardDeauthenticate(%S) %lu\n",
 		  NULLWSTR(pwszUserId), (unsigned long)dwFlags);
 
-	if(!pCardData || !lock(pCardData))
+	if (!pCardData || !lock(pCardData) || dwFlags)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	dwret = check_card_reader_status(pCardData, "CardDeauthenticate");
@@ -6262,6 +6262,10 @@ DWORD WINAPI CardDeauthenticateEx(__in PCARD_DATA pCardData,
 		  "CardDeauthenticateEx PinId=%u dwFlags=0x%08X\n",
 		  (unsigned int)PinId, (unsigned int)dwFlags);
 
+	if (PinId <= 0 || PinId > 0xFF) {
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	}
+
 	MD_FUNC_RETURN(pCardData, 1, CardDeauthenticate(pCardData, wszCARD_USER_USER, 0));
 }
 
@@ -6638,9 +6642,8 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 			*pdwDataLen = sizeof(*p);
 		if (cbData < sizeof(*p))
 			MD_FUNC_RETURN(pCardData, 1, ERROR_INSUFFICIENT_BUFFER);
-
-		logprintf(pCardData, 7, "CARD_AUTHENTICATED_STATE invalid\n");
-		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+		logprintf(pCardData, 3, "Unsupported property '%S'\n", wszProperty);
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 	else if (wcscmp(CP_CARD_PIN_STRENGTH_VERIFY,wszProperty) == 0)   {
 		DWORD *p = (DWORD *)pbData;
