@@ -14,8 +14,8 @@ nodist_noinst_DATA = opensc.conf opensc.conf.example
 # as there is no dependency for this.
 # Can be removed if MSVC is not required.
 force:
-opensc.conf.example: opensc.conf.example.in force
 opensc.conf: opensc.conf.in force
+opensc.conf.example: opensc.conf.example.in force
 
 .in:
 	$(AM_V_GEN)sed \
@@ -35,9 +35,9 @@ opensc.conf: opensc.conf.in force
 install-exec-hook: all
 	$(MKDIR_P) "$(DESTDIR)$(sysconfdir)"
 	if [ -f "$(DESTDIR)$(sysconfdir)/opensc.conf" ]; then \
-		$(INSTALL_DATA) $(srcdir)/opensc.conf "$(DESTDIR)$(sysconfdir)/opensc.conf.new"; \
+		$(INSTALL_DATA) opensc.conf "$(DESTDIR)$(sysconfdir)/opensc.conf.new"; \
 	else \
-		$(INSTALL_DATA) $(srcdir)/opensc.conf "$(DESTDIR)$(sysconfdir)/opensc.conf"; \
+		$(INSTALL_DATA) opensc.conf "$(DESTDIR)$(sysconfdir)/opensc.conf"; \
 	fi
 	$(MKDIR_P) "$(DESTDIR)$(docdir)"
 	$(INSTALL_DATA) opensc.conf.example "$(DESTDIR)$(docdir)/opensc.conf";
