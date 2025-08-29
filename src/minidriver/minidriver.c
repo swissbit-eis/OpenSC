@@ -3866,6 +3866,10 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 	logprintf(pCardData, 1, "CardAuthenticatePin '%S':%lu\n",
 		  NULLWSTR(pwszUserId), (unsigned long)cbPin);
 
+	if (!pwszUserId || !pbPin) {
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	}
+
 	if (wcscmp(pwszUserId, wszCARD_USER_USER) == 0)	{
 		PinId = ROLE_USER;
 	}
@@ -3875,8 +3879,6 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 	else {
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 	}
-	if (pbPin == NULL)
-		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	MD_FUNC_RETURN(pCardData, 1, CardAuthenticateEx(pCardData, PinId, CARD_PIN_SILENT_CONTEXT, pbPin, cbPin, NULL, NULL, pcAttemptsRemaining));
 }
