@@ -3980,7 +3980,11 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
 	if (rv != SC_SUCCESS) {
 		logprintf(pCardData, 1, "Challenge-response authentication failed: %s\n", sc_strerror(rv));
 
-		dwret = md_translate_OpenSC_to_Windows_error(rv, SCARD_E_UNEXPECTED);
+		if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED || SC_ERROR_SM_NO_SESSION_KEYS) {
+			dwret = SCARD_W_WRONG_CHV;
+		} else {
+			dwret = md_translate_OpenSC_to_Windows_error(rv, SCARD_E_UNEXPECTED);
+		}
 		goto err;
 	}
 
@@ -6109,6 +6113,10 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 
 		if(pcAttemptsRemaining)
 			(*pcAttemptsRemaining) = auth_info->tries_left;
+
+		if (r == SC_ERROR_INCORRECT_PARAMETERS || r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+			MD_FUNC_RETURN(pCardData, 1, SCARD_W_WRONG_CHV);
+		}
 		MD_FUNC_RETURN(pCardData, 1, md_translate_OpenSC_to_Windows_error(r, SCARD_W_WRONG_CHV));
 	}
 

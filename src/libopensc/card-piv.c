@@ -6167,6 +6167,12 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_log(card->ctx, "piv_pin_cmd tries_left=%d, logged_in=%d", priv->tries_left, priv->logged_in);
+
+	if (data->cmd == SC_PIN_CMD_GET_SESSION_PIN) {
+		sc_log(card->ctx, "piv_pin_cmd: SC_PIN_CMD_GET_SESSION_PIN not supported");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
 	if (data->cmd == SC_PIN_CMD_CHANGE) {
 		size_t i = 0;
 		if (data->pin2.len < 6) {

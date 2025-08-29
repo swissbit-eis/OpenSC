@@ -416,7 +416,10 @@ int sc_pkcs15_verify_pin_with_session_pin(struct sc_pkcs15_card *p15card,
 			data.pin1.prompt = "Please enter PIN";
 	}
 
-	if (card->caps & SC_CARD_CAP_SESSION_PIN && sessionpin && sessionpinlen) {
+	if (sessionpin && sessionpinlen) {
+		if (!(card->caps & SC_CARD_CAP_SESSION_PIN)) {
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Session PIN requested but card does not support it");
+		}
 		/* session pin is requested and supported with standard verification*/
 		data.cmd = SC_PIN_CMD_GET_SESSION_PIN;
 		memcpy(&data.pin2, &data.pin1, sizeof (data.pin1));
