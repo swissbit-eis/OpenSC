@@ -14,8 +14,8 @@ nodist_noinst_DATA = opensc.conf opensc.conf.example
 # as there is no dependency for this.
 # Can be removed if MSVC is not required.
 force:
-opensc.conf: opensc.conf.in force
 opensc.conf.example: opensc.conf.example.in force
+opensc.conf: opensc.conf.in force
 
 .in:
 	$(AM_V_GEN)sed \
@@ -32,7 +32,7 @@ opensc.conf.example: opensc.conf.example.in force
 		-e 's|@PROFILE_DIR_DEFAULT[@]|$(PROFILE_DIR_DEFAULT)|g' \
 		< $< > $@
 
-install-exec-hook: all
+install-exec-hook: opensc.conf.example
 	$(MKDIR_P) "$(DESTDIR)$(sysconfdir)"
 	if [ -f "$(DESTDIR)$(sysconfdir)/opensc.conf" ]; then \
 		$(INSTALL_DATA) opensc.conf "$(DESTDIR)$(sysconfdir)/opensc.conf.new"; \
@@ -42,7 +42,7 @@ install-exec-hook: all
 	$(MKDIR_P) "$(DESTDIR)$(docdir)"
 	$(INSTALL_DATA) opensc.conf.example "$(DESTDIR)$(docdir)/opensc.conf";
 
-uninstall-hook: all
+uninstall-hook: opensc.conf.example
 	rm -f "$(DESTDIR)$(sysconfdir)/opensc.conf.new" "$(DESTDIR)$(sysconfdir)/opensc.conf"
 	rm -f "$(DESTDIR)$(docdir)/opensc.conf"
 
