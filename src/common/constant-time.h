@@ -131,4 +131,20 @@ constant_time_eq_i(int a, int b)
 	return constant_time_eq((unsigned int)a, (unsigned int)b);
 }
 
+/* Signed comparisons */
+
+static constant_inline unsigned int
+constant_time_ge_signed(int a, int b)
+{
+	unsigned int a_u = (unsigned int)a;
+	unsigned int b_u = (unsigned int)b;
+	unsigned int msb_a = constant_time_msb(a_u);
+	unsigned int msb_b = constant_time_msb(b_u);
+	unsigned int sign_diff = msb_a ^ msb_b;
+
+	/* if signs are different, a >= b iff a is positive (msb_a is 0) */
+	/* if signs are same, a >= b iff a_u >= b_u (unsigned) */
+	return constant_time_select(sign_diff, ~msb_a, constant_time_ge(a_u, b_u));
+}
+
 #endif /* CONSTANT_TIME_H */
