@@ -5154,6 +5154,8 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 	if ( pAgreementInfo->dwVersion < CARD_DH_AGREEMENT_INFO_VERSION
 			&& pCardData->dwVersion == CARD_DATA_CURRENT_VERSION)
 		MD_FUNC_RETURN(pCardData, 1, ERROR_REVISION_MISMATCH);
+	if (pAgreementInfo->dwFlags)
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	if (!lock(pCardData))
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
