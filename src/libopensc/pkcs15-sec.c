@@ -365,7 +365,7 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 	LOG_FUNC_CALLED(ctx);
 
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_DERIVE)))
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for derivation");
+		LOG_TEST_RET(ctx, SC_ERROR_INCORRECT_PARAMETERS, "This key cannot be used for derivation");
 
 	switch (obj->type) {
 		case SC_PKCS15_TYPE_PRKEY_EC:
