@@ -5887,6 +5887,9 @@ DWORD WINAPI CardDestroyDHAgreement(
 {
 	VENDOR_SPECIFIC *vs;
 	struct md_dh_agreement* agreement = NULL;
+	struct sc_pkcs15_object *pin_obj = NULL;
+	struct sc_pkcs15_auth_info *auth_info = NULL;
+	int r;
 
 	MD_FUNC_CALLED(pCardData, 1);
 
@@ -5911,6 +5914,27 @@ DWORD WINAPI CardDestroyDHAgreement(
 	if (agreement->pbAgreement == NULL) {
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 	}
+
+	if (!vs->p15card || !vs->pin_objs[ROLE_USER]) {
+		MD_FUNC_RETURN(pCardData, 1, SCARD_W_SECURITY_VIOLATION);
+	}
+
+	pin_obj = vs->pin_objs[ROLE_USER];
+	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+
+	if (!auth_info) {
+		MD_FUNC_RETURN(pCardData, 1, SCARD_W_SECURITY_VIOLATION);
+	}
+
+	r = sc_pkcs15_get_pin_info(vs->p15card, pin_obj);
+	if (r != SC_SUCCESS) {
+		MD_FUNC_RETURN(pCardData, 1, md_translate_OpenSC_to_Windows_error(r, SCARD_W_SECURITY_VIOLATION));
+	}
+
+	if (auth_info->logged_in != SC_PIN_STATE_LOGGED_IN) {
+		MD_FUNC_RETURN(pCardData, 1, SCARD_W_SECURITY_VIOLATION);
+	}
+
 	SecureZeroMemory(agreement->pbAgreement, agreement->dwSize);
 	pCardData->pfnCspFree(agreement->pbAgreement);
 	agreement->pbAgreement = 0;
