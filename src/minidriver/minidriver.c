@@ -6430,6 +6430,107 @@ DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
 		MD_FUNC_RETURN(pCardData, 1, SCARD_S_SUCCESS);
 	}
 
+	if (wcscmp(CCP_ASSOCIATED_ECDH_KEY, wszProperty) == 0) {
+		PBYTE p = (PBYTE)pbData;
+		struct sc_pkcs15_prkey_info *prkey_info = NULL;
+		int idx;
+		int ecdh_found = -1;
+
+		logprintf(pCardData, 2, "CCP_ASSOCIATED_ECDH_KEY requested for container %u\n",
+				(unsigned int)bContainerIndex);
+
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(BYTE);
+		if (cbData < sizeof(BYTE))
+			MD_FUNC_RETURN(pCardData, 1, ERROR_INSUFFICIENT_BUFFER);
+
+		/* Check if the current container has an EC key */
+		if (!cont->prkey_obj || cont->prkey_obj->type != SC_PKCS15_TYPE_PRKEY_EC) {
+			logprintf(pCardData, 2, "Container %u does not contain an EC key\n",
+					(unsigned int)bContainerIndex);
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_NO_KEY_CONTAINER);
+		}
+
+		prkey_info = (struct sc_pkcs15_prkey_info *)cont->prkey_obj->data;
+
+		/* Check if current key has signature usage (ECDSA) */
+		if (!(prkey_info->usage & USAGE_ANY_SIGN)) {
+			logprintf(pCardData, 2, "Container %u EC key is not for signing (usage: 0x%X)\n",
+					(unsigned int)bContainerIndex, prkey_info->usage);
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_NO_KEY_CONTAINER);
+		}
+
+		logprintf(pCardData, 3, "Container %u has ECDSA key (id len=%u, field_length=%u), searching for associated ECDH key\n",
+				(unsigned int)bContainerIndex, (unsigned int)prkey_info->id.len,
+				(unsigned int)prkey_info->field_length);
+
+		/*
+		 * Look for an associated ECDH key. The association strategy:
+		 * 1. First, look for an ECDH key with the same certificate (same ID)
+		 * 2. If not found, look for the first ECDH key with the same curve
+		 * 3. Special handling for PIV cards where specific slots have defined purposes
+		 */
+
+		/* First pass: look for ECDH key with same ID (might be dual-use key) */
+		for (idx = 0; idx < MD_MAX_KEY_CONTAINERS; idx++) {
+			struct md_pkcs15_container *ecdh_cont = &vs->p15_containers[idx];
+			struct sc_pkcs15_prkey_info *ecdh_info;
+
+			if (!ecdh_cont->prkey_obj || ecdh_cont->prkey_obj->type != SC_PKCS15_TYPE_PRKEY_EC)
+				continue;
+
+			ecdh_info = (struct sc_pkcs15_prkey_info *)ecdh_cont->prkey_obj->data;
+
+			/* Check if this key has key agreement usage (ECDH) */
+			if (!(ecdh_info->usage & USAGE_ANY_AGREEMENT))
+				continue;
+
+			/* Check if keys have the same ID (dual-use key or explicitly linked) */
+			if (sc_pkcs15_compare_id(&prkey_info->id, &ecdh_info->id)) {
+				ecdh_found = idx;
+				logprintf(pCardData, 3, "Found ECDH key with same ID in container %u\n", idx);
+				break;
+			}
+		}
+
+		/* Second pass: if no same-ID key found, look for ECDH key with same curve */
+		if (ecdh_found < 0) {
+			for (idx = 0; idx < MD_MAX_KEY_CONTAINERS; idx++) {
+				struct md_pkcs15_container *ecdh_cont = &vs->p15_containers[idx];
+				struct sc_pkcs15_prkey_info *ecdh_info;
+
+				if (!ecdh_cont->prkey_obj || ecdh_cont->prkey_obj->type != SC_PKCS15_TYPE_PRKEY_EC)
+					continue;
+
+				ecdh_info = (struct sc_pkcs15_prkey_info *)ecdh_cont->prkey_obj->data;
+
+				/* Check if this key has key agreement usage (ECDH) */
+				if (!(ecdh_info->usage & USAGE_ANY_AGREEMENT))
+					continue;
+
+				/* Check if keys have the same curve (field length) */
+				if (prkey_info->field_length == ecdh_info->field_length) {
+					ecdh_found = idx;
+					logprintf(pCardData, 3, "Found ECDH key with same curve (field_length=%u) in container %u\n",
+							(unsigned int)ecdh_info->field_length, idx);
+					break; /* Use first matching ECDH key with same curve */
+				}
+			}
+		}
+
+		if (ecdh_found >= 0) {
+			*p = (BYTE)ecdh_found;
+			logprintf(pCardData, 2, "Returning associated ECDH key in container %u for ECDSA key in container %u\n",
+					ecdh_found, (unsigned int)bContainerIndex);
+			MD_FUNC_RETURN(pCardData, 1, SCARD_S_SUCCESS);
+		}
+
+		/* No associated ECDH key found */
+		logprintf(pCardData, 2, "No associated ECDH key found for container %u\n",
+				(unsigned int)bContainerIndex);
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_NO_KEY_CONTAINER);
+	}
+
 	MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 }
 
@@ -7365,6 +7466,7 @@ static DWORD associate_card(PCARD_DATA pCardData)
 static void disassociate_card(PCARD_DATA pCardData)
 {
 	VENDOR_SPECIFIC *vs;
+	BYTE i;
 
 	if (!pCardData) {
 		logprintf(pCardData, 1,
