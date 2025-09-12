@@ -7466,7 +7466,6 @@ static DWORD associate_card(PCARD_DATA pCardData)
 static void disassociate_card(PCARD_DATA pCardData)
 {
 	VENDOR_SPECIFIC *vs;
-	BYTE i;
 
 	if (!pCardData) {
 		logprintf(pCardData, 1,
