@@ -3358,6 +3358,12 @@ DWORD WINAPI CardDeleteContainer(__in PCARD_DATA pCardData,
 
 	MD_FUNC_CALLED(pCardData, 1);
 
+	if (md_is_read_only(pCardData)) {
+		logprintf(pCardData, 1, "CardDeleteContainer- unsupported for read only\n");
+
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	}
+
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
 		  (unsigned long)GetCurrentThreadId(), pCardData);
@@ -3434,6 +3440,12 @@ DWORD WINAPI CardCreateContainerEx(__in PCARD_DATA  pCardData,
 	DWORD dwret;
 
 	MD_FUNC_CALLED(pCardData, 1);
+
+	if (md_is_read_only(pCardData)) {
+		logprintf(pCardData, 1, "CardCreateContainerEx - unsupported for read only\n");
+
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	}
 
 	if (!pCardData || !lock(pCardData))
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
@@ -3894,6 +3906,12 @@ DWORD WINAPI CardGetChallenge(__in PCARD_DATA pCardData,
 
 	MD_FUNC_CALLED(pCardData, 1);
 
+	if (md_is_read_only(pCardData)) {
+		logprintf(pCardData, 1, "CardGetChallenge - unsupported for read only\n");
+
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	}
+
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
 		  (unsigned long)GetCurrentThreadId(), pCardData);
@@ -3954,6 +3972,12 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
 
 	MD_FUNC_CALLED(pCardData, 1);
 
+	if (md_is_read_only(pCardData)) {
+		logprintf(pCardData, 1, "CardAuthenticateChallenge - unsupported for read only\n");
+
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	}
+
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
 		  (unsigned long)GetCurrentThreadId(), pCardData);
@@ -4009,6 +4033,12 @@ DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
 	DWORD r = SCARD_S_SUCCESS;
 
 	MD_FUNC_CALLED(pCardData, 1);
+
+	if (md_is_read_only(pCardData)) {
+		logprintf(pCardData, 1, "CardUnblockPin - unsupported for read only\n");
+
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	}
 
 	if(!pCardData || !lock(pCardData))
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
@@ -4083,6 +4113,12 @@ DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData,
 	PIN_ID pinid;
 
 	MD_FUNC_CALLED(pCardData, 1);
+
+	if (md_is_read_only(pCardData)) {
+		logprintf(pCardData, 1, "CardChangeAuthenticator - unsupported for read only\n");
+
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	}
 
 	if(!pCardData || !lock(pCardData))
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
@@ -4223,6 +4259,12 @@ DWORD WINAPI CardCreateFile(__in PCARD_DATA pCardData,
 
 	MD_FUNC_CALLED(pCardData, 1);
 
+	if (md_is_read_only(pCardData)) {
+		logprintf(pCardData, 1, "CardCreateFile - unsupported for read only\n");
+
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	}
+
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
 		  (unsigned long)GetCurrentThreadId(), pCardData);
@@ -4336,6 +4378,12 @@ DWORD WINAPI CardWriteFile(__in PCARD_DATA pCardData,
 
 	MD_FUNC_CALLED(pCardData, 1);
 
+	if (md_is_read_only(pCardData)) {
+		logprintf(pCardData, 1, "CardWriteFile - unsupported for read only\n");
+
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	}
+
 	if(!pCardData || !lock(pCardData))
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
@@ -4395,6 +4443,12 @@ DWORD WINAPI CardDeleteFile(__in PCARD_DATA pCardData,
 	DWORD dwret;
 
 	MD_FUNC_CALLED(pCardData, 1);
+
+	if (md_is_read_only(pCardData)) {
+		logprintf(pCardData, 1, "CardDeleteFile - unsupported for read only\n");
+
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	}
 
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
@@ -6208,6 +6262,12 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 	size_t target_len = cbTargetData;
 
 	MD_FUNC_CALLED(pCardData, 1);
+
+	if (md_is_read_only(pCardData)) {
+		logprintf(pCardData, 1, "CardChangeAuthenticatorEx- unsupported for read only\n");
+
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	}
 
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
