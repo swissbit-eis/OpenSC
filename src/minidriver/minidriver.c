@@ -247,6 +247,7 @@ static void disassociate_card(PCARD_DATA pCardData);
 static DWORD md_pkcs15_delete_object(PCARD_DATA pCardData, struct sc_pkcs15_object *obj);
 static DWORD md_fs_init(PCARD_DATA pCardData);
 static void md_fs_finalize(PCARD_DATA pCardData);
+static BOOL md_is_read_only(PCARD_DATA pCardData);
 
 #if defined(__GNUC__)
 static void logprintf(PCARD_DATA pCardData, int level, const char* format, ...)
@@ -591,6 +592,10 @@ md_get_pin_by_role(PCARD_DATA pCardData, PIN_ID role, struct sc_pkcs15_object **
 		}
 	}
 	else if (role == ROLE_ADMIN) {
+		if (md_is_read_only(pCardData)) {
+			logprintf(pCardData, 2, "Admin PIN is hidden because card is read-only\n");
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+		}
 		/* Get SO PIN; if no, get the 'global' PUK; if no get the 'local' one  */
 		rv = sc_pkcs15_find_so_pin(vs->p15card, ret_obj);
 		if (rv)
@@ -6673,6 +6678,11 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		if (dwFlags != ROLE_EVERYONE && vs->pin_objs[dwFlags] == NULL)
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
+		if (dwFlags == ROLE_ADMIN && md_is_read_only(pCardData)) {
+			logprintf(pCardData, 2, "Admin PIN info hidden because read only\n");
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+		}
+
 		if (dwFlags == ROLE_ADMIN && pCardData->dwVersion >= CARD_DATA_VERSION_SIX) {
 			// For admin PIN in V6 and above, use ChallengeResponsePinType
 			p->PinType = ChallengeResponsePinType;
@@ -6748,6 +6758,11 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		for (pinidx = 0; pinidx < MD_MAX_PINS; pinidx++) {
 			if (!vs->pin_objs[pinidx])
 				continue;
+
+			if (pinidx == ROLE_ADMIN && md_is_read_only(pCardData)) {
+				logprintf(pCardData, 2, "Admin PIN excluded because read only\n");
+				continue;
+			}
 
 			SET_PIN(*p, (PIN_ID)pinidx);
 		}
