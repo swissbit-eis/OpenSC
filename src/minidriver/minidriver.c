@@ -3365,7 +3365,6 @@ DWORD WINAPI CardDeleteContainer(__in PCARD_DATA pCardData,
 
 	if (md_is_read_only(pCardData)) {
 		logprintf(pCardData, 1, "CardDeleteContainer- unsupported for read only\n");
-
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
@@ -3448,7 +3447,6 @@ DWORD WINAPI CardCreateContainerEx(__in PCARD_DATA  pCardData,
 
 	if (md_is_read_only(pCardData)) {
 		logprintf(pCardData, 1, "CardCreateContainerEx - unsupported for read only\n");
-
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
@@ -3913,7 +3911,6 @@ DWORD WINAPI CardGetChallenge(__in PCARD_DATA pCardData,
 
 	if (md_is_read_only(pCardData)) {
 		logprintf(pCardData, 1, "CardGetChallenge - unsupported for read only\n");
-
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
@@ -3979,7 +3976,6 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
 
 	if (md_is_read_only(pCardData)) {
 		logprintf(pCardData, 1, "CardAuthenticateChallenge - unsupported for read only\n");
-
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
@@ -4041,7 +4037,6 @@ DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
 
 	if (md_is_read_only(pCardData)) {
 		logprintf(pCardData, 1, "CardUnblockPin - unsupported for read only\n");
-
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
@@ -4121,7 +4116,6 @@ DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData,
 
 	if (md_is_read_only(pCardData)) {
 		logprintf(pCardData, 1, "CardChangeAuthenticator - unsupported for read only\n");
-
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
@@ -4266,7 +4260,6 @@ DWORD WINAPI CardCreateFile(__in PCARD_DATA pCardData,
 
 	if (md_is_read_only(pCardData)) {
 		logprintf(pCardData, 1, "CardCreateFile - unsupported for read only\n");
-
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
@@ -4385,7 +4378,6 @@ DWORD WINAPI CardWriteFile(__in PCARD_DATA pCardData,
 
 	if (md_is_read_only(pCardData)) {
 		logprintf(pCardData, 1, "CardWriteFile - unsupported for read only\n");
-
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
@@ -4451,7 +4443,6 @@ DWORD WINAPI CardDeleteFile(__in PCARD_DATA pCardData,
 
 	if (md_is_read_only(pCardData)) {
 		logprintf(pCardData, 1, "CardDeleteFile - unsupported for read only\n");
-
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
@@ -6274,7 +6265,6 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 
 	if (md_is_read_only(pCardData)) {
 		logprintf(pCardData, 1, "CardChangeAuthenticatorEx- unsupported for read only\n");
-
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
