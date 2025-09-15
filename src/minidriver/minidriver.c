@@ -30,6 +30,7 @@
 #pragma managed(push, off)
 #endif
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -104,6 +105,7 @@ HINSTANCE g_inst;
 
 #define MD_MAX_KEY_CONTAINERS 32
 #define MD_CARDID_SIZE 16
+#define MD_MAX_NAME_LENGTH    8
 
 #define MD_ROLE_USER_SIGN (ROLE_ADMIN + 1)
 /*
@@ -328,6 +330,15 @@ static void loghex(PCARD_DATA pCardData, int level, PBYTE data, size_t len)
 	}
 	if (i%32 != 0)
 		logprintf(pCardData, level, " %04X  %s\n", a, line);
+}
+
+static void
+string_to_lower(char *s)
+{
+	if (s == NULL)
+		return;
+	for (; *s; ++s)
+		*s = tolower(*s);
 }
 
 static DWORD reinit_card(PCARD_DATA pCardData)
@@ -1018,10 +1029,14 @@ md_fs_find_directory(PCARD_DATA pCardData, struct md_directory *parent, char *na
 		dir = parent;
 	}
 	else   {
+		if (strlen(name) > MD_MAX_NAME_LENGTH)
+			return SCARD_E_INVALID_PARAMETER;
+		char lower_name[MD_MAX_NAME_LENGTH + 1];
 		dir = parent->subdirs;
+		strlcpy(lower_name, name, sizeof(lower_name));
+		string_to_lower(lower_name);
 		while(dir)   {
-			if (strlen(name) > sizeof dir->name
-					|| !strncmp((char *)dir->name, name, sizeof dir->name))
+			if (!strcmp((char *)dir->name, lower_name))
 				break;
 			dir = dir->next;
 		}
@@ -1048,12 +1063,16 @@ md_fs_add_directory(PCARD_DATA pCardData, struct md_directory **head, char *name
 	if (!pCardData || !head || !name)
 		return SCARD_E_INVALID_PARAMETER;
 
+	if (strlen(name) > MD_MAX_NAME_LENGTH)
+		return SCARD_E_INVALID_PARAMETER;
+
 	new_dir = pCardData->pfnCspAlloc(sizeof(struct md_directory));
 	if (!new_dir)
 		return SCARD_E_NO_MEMORY;
 	memset(new_dir, 0, sizeof(struct md_directory));
 
 	strlcpy((char *)new_dir->name, name, sizeof(new_dir->name));
+	string_to_lower((char *)new_dir->name);
 	new_dir->acl = acl;
 
 	if (*head == NULL)   {
@@ -1087,6 +1106,9 @@ md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file *
 	if (!pCardData || !name || !*name)
 		return SCARD_E_INVALID_PARAMETER;
 
+	if (strlen(name) > MD_MAX_NAME_LENGTH)
+		return SCARD_E_INVALID_PARAMETER;
+
 	dwret = md_fs_find_directory(pCardData, NULL, parent, &dir);
 	if (dwret != SCARD_S_SUCCESS)   {
 		logprintf(pCardData, 2, "find directory '%s' error: %lX\n",
@@ -1098,9 +1120,12 @@ md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file *
 		return SCARD_E_DIR_NOT_FOUND;
 	}
 
+	char lower_name[MD_MAX_NAME_LENGTH + 1];
+	strlcpy(lower_name, name, sizeof(lower_name));
+	string_to_lower(lower_name);
+
 	for (file = dir->files; file!=NULL;)   {
-		if (sizeof file->name < strlen(name)
-				|| !strncmp((char *)file->name, name, sizeof file->name))
+		if (!strcmp((char *)file->name, lower_name))
 			break;
 		file = file->next;
 	}
@@ -1124,12 +1149,16 @@ md_fs_add_file(PCARD_DATA pCardData, struct md_file **head, char *name, CARD_FIL
 	if (!pCardData || !head || !name)
 		return SCARD_E_INVALID_PARAMETER;
 
+	if (strlen(name) > MD_MAX_NAME_LENGTH)
+		return SCARD_E_INVALID_PARAMETER;
+
 	new_file = pCardData->pfnCspAlloc(sizeof(struct md_file));
 	if (!new_file)
 		return SCARD_E_NO_MEMORY;
 	memset(new_file, 0, sizeof(struct md_file));
 
 	strlcpy((char *)new_file->name, name, sizeof(new_file->name));
+	string_to_lower((char *)new_file->name);
 	new_file->size = size;
 	new_file->acl = acl;
 
@@ -1189,6 +1218,9 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 	if (!pCardData || !name)
 		return SCARD_E_INVALID_PARAMETER;
 
+	if (strlen(name) > MD_MAX_NAME_LENGTH)
+		return SCARD_E_INVALID_PARAMETER;
+
 	vs = pCardData->pvVendorSpecific;
 	if (!vs)
 		return SCARD_E_INVALID_PARAMETER;
@@ -1208,19 +1240,20 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 		return SCARD_E_FILE_NOT_FOUND;
 	}
 
-	if (sizeof dir->files->name < strlen(name)
-			|| !strncmp((char *)dir->files->name, name, sizeof dir->files->name))   {
+	char lower_name[MD_MAX_NAME_LENGTH + 1];
+	strlcpy(lower_name, name, sizeof(lower_name));
+	string_to_lower(lower_name);
+
+	if (!strcmp((char *)dir->files->name, lower_name)) {
 		file_to_rm = dir->files;
 		dir->files = dir->files->next;
 		md_fs_free_file(pCardData, file_to_rm);
 		dwret = SCARD_S_SUCCESS;
-	}
-	else   {
+	} else {
 		for (file = dir->files; file!=NULL; file = file->next)   {
 			if (!file->next)
 				break;
-			if (sizeof file->next->name < strlen(name)
-					|| !strncmp((char *)file->next->name, name, sizeof file->next->name))   {
+			if (!strcmp((char *)file->next->name, lower_name)) {
 				file_to_rm = file->next;
 				file->next = file->next->next;
 				md_fs_free_file(pCardData, file_to_rm);
