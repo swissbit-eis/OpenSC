@@ -15,7 +15,7 @@ define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
 define([VS_FF_LEGAL_COMPANY_NAME], [Swissbit AG])
 define([VS_FF_LEGAL_COMPANY_URL], [https://swissbit.com])
 define([VS_FF_COMMENTS], [Provided under the terms of the GNU Lesser General Public License (LGPLv2.1+).])
-define([VS_FF_PRODUCT_NAME], [OpenSC smartcard framework adapted for Swissbit iShield Key])
+define([VS_FF_PRODUCT_NAME], [OpenSC smartcard framework for Swissbit iShield Key])
 define([VS_FF_PRODUCT_UPDATES], [https://github.com/swissbit-eis/OpenSC/releases])
 
 m4_sinclude(m4/version.m4.ci)
