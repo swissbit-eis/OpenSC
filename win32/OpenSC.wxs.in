@@ -109,22 +109,44 @@
             <Component Id="IshieldPivModule" Guid="*">
               <?if $(sys.BUILDARCH) = x64 ?>
                 <!-- 64-bit version -->
-                <File Source="$(var.SOURCE_DIR)\etc\win64\ishield_piv_module.dll"
+                <?if $(SignedDLLs) = 1 ?>
+                  <File Source="$(var.SOURCE_DIR)\signed_dlls\windows64\ishield_piv_module.dll"
+                        KeyPath="yes"
+                        Vital="yes"
+                        ProcessorArchitecture="x64"/>
+                <?else ?>
+                  <File Source="$(var.SOURCE_DIR)\etc\win64\ishield_piv_module.dll"
                       KeyPath="yes"
                       Vital="yes"
                       ProcessorArchitecture="x64"/>
+                <?endif ?>
               <?else ?>
                 <!-- 32-bit version -->
-                <File Source="$(var.SOURCE_DIR)\etc\win32\ishield_piv_module.dll"
-                      KeyPath="yes"
-                      Vital="yes"
-                      ProcessorArchitecture="x86"/>
+                <?if $(SignedDLLs) = 1 ?>
+                  <File Source="$(var.SOURCE_DIR)\signed_dlls\windows32\ishield_piv_module.dll"
+                        KeyPath="yes"
+                        Vital="yes"
+                        ProcessorArchitecture="x86"/>
+                <?else ?>
+                  <File Source="$(var.SOURCE_DIR)\etc\win32\ishield_piv_module.dll"
+                        KeyPath="yes"
+                        Vital="yes"
+                        ProcessorArchitecture="x86"/>
+                <?endif ?>
               <?endif ?>
             </Component>
 
 
           <Directory Id="INSTALLDIR_MINIDRIVER" Name="minidriver">
-            <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" />
+            <?if $(SignedDLLs) = 1 ?>
+              <?if $(sys.BUILDARCH) = x64 ?>
+                <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\signed_dlls\windows64\opensc-minidriver.dll" />
+              <?else ?>
+                <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\signed_dlls\windows32\opensc-minidriver.dll" />
+              <?endif ?>
+            <?else ?>
+              <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" />
+            <?endif ?>
             <!-- install an alias for the Base smart card CSP. Using a different CSP in minidriver installation deactivate the plug and play feature
                 but not all other components like the pin change screen available after ctrl+alt+del.
                 It is because the "80000001" entry is still returning the minidriver dll.-->
@@ -218,7 +240,7 @@
       <?ifdef OpenSSL ?>
         <File Id="smm_local.dll" Source="$(var.SOURCE_DIR)\src\smm\smm-local.dll" />
       <?endif?>
-      <File Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" />
+      <File Id="opensc.dll" Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" />
       <Files Include="$(var.SOURCE_DIR)\src\tools\*.exe" />
     </ComponentGroup>
 
@@ -255,6 +277,7 @@
       </Feature>
       <Feature Id="OpenSC_minidriver" Level="1" Title="Smart card minidriver" Description="Security module that can be used by native Windows applications, for example Edge, Chrome, Microsoft Office, Acrobat Reader, etc.">
         <ComponentRef Id="opensc_minidriver.dll" />
+        <ComponentRef Id="opensc.dll" />
         <ComponentRef Id="openscBaseCSP" />
         <ComponentRef Id="CertPropSvc" />
       </Feature>
