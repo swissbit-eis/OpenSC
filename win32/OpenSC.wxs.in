@@ -71,7 +71,7 @@
     </Component>
 
     <StandardDirectory Id="ProgramFiles6432Folder">
-      <Directory Id="OpenSC_Project_Dir" Name="OpenSC Project">
+      <Directory Id="OpenSC_Project_Dir" Name="Swissbit AG">
         <!-- Most of the stuff goes to the Program Files folder -->
         <Directory Id="INSTALLDIR" Name="OpenSC$(var.SUFFIX)">
           <!-- opensc.conf sample goes to installation directory -->
@@ -223,9 +223,8 @@
       </Directory>
     </StandardDirectory>
     <StandardDirectory Id="ProgramMenuFolder">
-      <Directory Id="ProgramMenuDir" Name="OpenSC Project">
+      <Directory Id="ProgramMenuDir" Name="Swissbit AG">
         <Component Id="ProgramMenuDir">
-          <util:InternetShortcut Id="OnlineDocumentationShortcut" Name="OpenSC wiki" Target="https://github.com/OpenSC/OpenSC/wiki" />
           <RemoveFolder Id="ProgramMenuDir" On="uninstall" />
           <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]" Name="installed" Type="integer" Value="1" KeyPath="yes" />
         </Component>
@@ -278,6 +277,7 @@
       <Feature Id="OpenSC_minidriver" Level="1" Title="Smart card minidriver" Description="Security module that can be used by native Windows applications, for example Edge, Chrome, Microsoft Office, Acrobat Reader, etc.">
         <ComponentRef Id="opensc_minidriver.dll" />
         <ComponentRef Id="opensc.dll" />
+        <ComponentRef Id="pkcs15.profile"/>
         <ComponentRef Id="openscBaseCSP" />
         <ComponentRef Id="CertPropSvc" />
       </Feature>

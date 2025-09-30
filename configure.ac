@@ -801,7 +801,7 @@ fi
 if test "${cvcdir}" = "" ; then
 	case "${host}" in
 		*-mingw*|*-winnt*|*-cygwin*)
-			cvcdir="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\cvc"
+			cvcdir="%PROGRAMFILES%\\\Swissbit AG\\\OpenSC\\\cvc"
 			;;
 		*)
 			AC_MSG_WARN([use --enable-cvcdir=DIR])
@@ -828,7 +828,7 @@ if test -z "${x509dir}"
 then
 	case "${host}" in
 		*-mingw*|*-winnt*|*-cygwin*)
-			x509dir="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\x509"
+			x509dir="%PROGRAMFILES%\\\Swissbit AG\\\OpenSC\\\x509"
 			;;
 		*)
 			AC_MSG_WARN([use --enable-x509dir=DIR])
@@ -990,7 +990,7 @@ if test "${enable_sm}" = "yes"; then
 	DEFAULT_SM_MODULE="${LIB_PRE}smm-local${DYN_LIB_EXT}"
 	case "${host}" in
 		*-mingw*|*-winnt*|*-cygwin*)
-			DEFAULT_SM_MODULE_PATH="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\tools"
+			DEFAULT_SM_MODULE_PATH="%PROGRAMFILES%\\\Swissbit AG\\\OpenSC\\\tools"
 		;;
 		*)
 			DEFAULT_SM_MODULE_PATH="${libdir}"
@@ -999,9 +999,9 @@ if test "${enable_sm}" = "yes"; then
 fi
 
 if test "${PLATFORM}" = "x86"; then
-	DEFAULT_INSTALL_DIR="C:\\Program Files (x86)\\OpenSC Project\\OpenSC\\"
+	DEFAULT_INSTALL_DIR="C:\\Program Files (x86)\\Swissbit AG\\OpenSC\\"
 else
-	DEFAULT_INSTALL_DIR="C:\\Program Files\\OpenSC Project\\OpenSC\\"
+	DEFAULT_INSTALL_DIR="C:\\Program Files\\Swissbit AG\\OpenSC\\"
 fi
 
 if test "${with_pkcs11_provider}" = "detect"; then
@@ -1009,8 +1009,8 @@ if test "${with_pkcs11_provider}" = "detect"; then
 		DEFAULT_PKCS11_PROVIDER="${libdir}/opensc-pkcs11${DYN_LIB_EXT}"
 		DEFAULT_ONEPIN_PKCS11_PROVIDER="${libdir}/onepin-opensc-pkcs11${DYN_LIB_EXT}"
 	else
-		DEFAULT_PKCS11_PROVIDER="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\pkcs11\\\opensc-pkcs11.dll"
-		DEFAULT_ONEPIN_PKCS11_PROVIDER="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\pkcs11\\\onepin-opensc-pkcs11.dll"
+		DEFAULT_PKCS11_PROVIDER="%PROGRAMFILES%\\\Swissbit AG\\\OpenSC\\\pkcs11\\\opensc-pkcs11.dll"
+		DEFAULT_ONEPIN_PKCS11_PROVIDER="%PROGRAMFILES%\\\Swissbit AG\\\OpenSC\\\pkcs11\\\onepin-opensc-pkcs11.dll"
 	fi
 else
 	DEFAULT_PKCS11_PROVIDER="${with_pkcs11_provider}"
@@ -1214,7 +1214,6 @@ AC_CONFIG_FILES([
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
 	win32/winconfig.h
-	win32/OpenSC.iss
 	win32/OpenSC.wxs
 	MacOSX/Makefile
 	MacOSX/build-package
