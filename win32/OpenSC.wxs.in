@@ -109,7 +109,7 @@
             <Component Id="IshieldPivModule" Guid="*">
               <?if $(sys.BUILDARCH) = x64 ?>
                 <!-- 64-bit version -->
-                <?if $(SignedDLLs) = 1 ?>
+                <?ifdef SignedDLLs ?>
                   <File Source="$(var.SOURCE_DIR)\signed_dlls\windows64\ishield_piv_module.dll"
                         KeyPath="yes"
                         Vital="yes"
@@ -122,7 +122,7 @@
                 <?endif ?>
               <?else ?>
                 <!-- 32-bit version -->
-                <?if $(SignedDLLs) = 1 ?>
+                <?ifdef SignedDLLs ?>
                   <File Source="$(var.SOURCE_DIR)\signed_dlls\windows32\ishield_piv_module.dll"
                         KeyPath="yes"
                         Vital="yes"
@@ -138,7 +138,7 @@
 
 
           <Directory Id="INSTALLDIR_MINIDRIVER" Name="minidriver">
-            <?if $(SignedDLLs) = 1 ?>
+            <?ifdef SignedDLLs ?>
               <?if $(sys.BUILDARCH) = x64 ?>
                 <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\signed_dlls\windows64\opensc-minidriver.dll" />
               <?else ?>
