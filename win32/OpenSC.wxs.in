@@ -277,7 +277,9 @@
       <Feature Id="OpenSC_minidriver" Level="1" Title="Smart card minidriver" Description="Security module that can be used by native Windows applications, for example Edge, Chrome, Microsoft Office, Acrobat Reader, etc.">
         <ComponentRef Id="opensc_minidriver.dll" />
         <ComponentRef Id="opensc.dll" />
-        <ComponentRef Id="pkcs15.profile"/>
+        <?ifdef OpenSSL ?>
+          <ComponentGroupRef Id="profiles" />
+        <?endif?>
         <ComponentRef Id="openscBaseCSP" />
         <ComponentRef Id="CertPropSvc" />
       </Feature>

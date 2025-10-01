@@ -111,7 +111,7 @@ PROGRAMS_OPENPACE = npa-tool.exe
 WIXFLAGS = -d OpenPACE="$(OPENPACE_DIR)" $(WIXFLAGS)
 !ENDIF
 
-# If you want to build the intaller with signed DLLs set SIGNED_DLLS= /YES
+# If you want to build the installer with signed DLLs set SIGNED_DLLS= /YES
 !IF "$(SIGNED_DLLS)" == "/YES"
 WIXFLAGS = -d SignedDLLs=1 $(WIXFLAGS)
 !ENDIF
