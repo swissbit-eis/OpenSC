@@ -710,7 +710,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 #ifdef _WIN32
 	temp_len = PATH_MAX-1;
 	r = sc_ctx_win32_get_config_value("OPENSC_CONF", "ConfigFile", "Software\\Swissbit AG\\OpenSC",
-		temp_path, &temp_len);
+			temp_path, &temp_len);
 	if (r)   {
 		sc_log(ctx, "process_config_file doesn't find opensc config file. Please set the registry key.");
 		return;

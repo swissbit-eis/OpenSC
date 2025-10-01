@@ -22,7 +22,7 @@ jobs:
       matrix:
         platform: [x86, x64, arm64]
         configuration: [Light, Release]
-        image: [windows-2019, windows-2022]
+        image: [windows-2022, windows-2025]
         include:
           - platform: x86
             setenv: amd64_x86
