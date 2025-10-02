@@ -156,7 +156,9 @@ static int use_key(struct sc_pkcs15_card *p15card,
 		if (revalidated_cached_pin)
 			/* only re-validate once */
 			break;
-		if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+		if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED || r == SC_ERROR_SM_NO_SESSION_KEYS) {
+			/* When secure messaging is enabled 6982 is mapped
+			 * to SC_ERROR_SM_NO_SESSION_KEYS */
 			r = sc_pkcs15_pincache_revalidate(p15card, obj);
 			if (r < 0)
 				break;
