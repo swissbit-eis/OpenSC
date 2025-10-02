@@ -223,19 +223,19 @@
         <File Id="smm_local.dll" Source="$(var.SOURCE_DIR)\src\smm\smm-local.dll" />
       <?endif?>
       <File Id="opensc.dll" Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" />
-      <File Id="opensc-notify.exe" Source="$(var.SOURCE_DIR)\src\tools\opensc-notify.exe" />
-      <File Id="piv-tool.exe" Source="$(var.SOURCE_DIR)\src\tools\piv-tool.exe" />
-      <File Id="pkcs11-tool.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs11-tool.exe" />
-      <File Id="pkcs11-register.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs11-register.exe" />
-      <File Id="pkcs15-crypt.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-crypt.exe" />
-      <File Id="pkcs15-init.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-init.exe" />
-      <File Id="pkcs15-tool.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-tool.exe" />
-      <File Id="opensc-tool.exe" Source="$(var.SOURCE_DIR)\src\tools\opensc-tool.exe" />
+      <File Id="opensc_notify.exe" Source="$(var.SOURCE_DIR)\src\tools\opensc-notify.exe" />
+      <File Id="piv_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\piv-tool.exe" />
+      <File Id="pkcs11_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs11-tool.exe" />
+      <File Id="pkcs11_register.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs11-register.exe" />
+      <File Id="pkcs15_crypt.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-crypt.exe" />
+      <File Id="pkcs15_init.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-init.exe" />
+      <File Id="pkcs15_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-tool.exe" />
+      <File Id="opensc_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\opensc-tool.exe" />
     </ComponentGroup>
 
 <?ifdef OpenSSL ?>
     <ComponentGroup Id="profiles" Directory="INSTALLDIR" Subdirectory="profiles">
-      <File Id="PIV-II.profile" Source="$(var.SOURCE_DIR)\src\pkcs15init\PIV-II.profile" />
+      <File Id="PIV_II.profile" Source="$(var.SOURCE_DIR)\src\pkcs15init\PIV-II.profile" />
       <File Id="pkcs15.profile" Source="$(var.SOURCE_DIR)\src\pkcs15init\pkcs15.profile" />
     </ComponentGroup>
 <?endif?>
