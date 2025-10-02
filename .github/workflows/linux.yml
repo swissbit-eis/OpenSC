@@ -109,37 +109,6 @@ jobs:
       - run: .github/setup-linux.sh ix86
       - run: .github/build.sh ix86
 
-  build-mingw:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: .github/setup-linux.sh mingw force-install
-      - run: .github/build.sh mingw
-      - name: Cache build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: opensc-build-mingw
-          path:
-            win32/Output/OpenSC*.exe
-
-  build-mingw32:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-latest-base
-          execute_install_scripts: true
-      - run: .github/setup-linux.sh mingw32
-      - run: .github/build.sh mingw32
-      - name: Cache build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: opensc-build-mingw32
-          path:
-            win32/Output/OpenSC*.exe
-
   build-piv-sm:
     runs-on: ubuntu-24.04
     steps:
