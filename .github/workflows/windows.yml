@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         platform: [x86, x64, arm64]
-        configuration: [Light, Release]
+        configuration: [Release]
         image: [windows-2022, windows-2025]
         include:
           - platform: x86

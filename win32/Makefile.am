@@ -4,7 +4,7 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/winconfig.h \
 		$(srcdir)/OpenSC.wxs
 EXTRA_DIST = ltrc.inc Makefile.mak Make.rules.mak versioninfo.rc winconfig.h.in \
 		OpenSC.wxs.in versioninfo-customactions.rc \
-		OpenSC.ico dlgbmp.bmp bannrbmp.bmp DDORes.dll_14_2302.ico
+		dlgbmp.bmp bannrbmp.bmp DDORes.dll_14_2302.ico
 dist_noinst_HEADERS = versioninfo.rc winconfig.h OpenSC.wxs
 
 if ENABLE_MINIDRIVER_SETUP_CUSTOMACTION
