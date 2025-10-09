@@ -6039,10 +6039,12 @@ static int piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2
 	/* we do this because 6982 could also mean a verify is not allowed over contactless without VCI */
 	/* we stashed the sw1 and sw2 above for verify */
 	/* Check specific NIST sp800-73-4 SM  errors */
-	for (i = 0; piv_sm_errors[i].SWs != 0; i++) {
-		if (piv_sm_errors[i].SWs == ((sw1 << 8) | sw2)) {
-			sc_log(card->ctx, "%s", piv_sm_errors[i].errorstr);
-			return piv_sm_errors[i].errorno;
+	if (priv && (priv->sm_flags & PIV_SM_FLAGS_SM_IS_ACTIVE)) {
+		for (i = 0; piv_sm_errors[i].SWs != 0; i++) {
+			if (piv_sm_errors[i].SWs == ((sw1 << 8) | sw2)) {
+				sc_log(card->ctx, "%s", piv_sm_errors[i].errorstr);
+				return piv_sm_errors[i].errorno;
+			}
 		}
 	}
 #endif
