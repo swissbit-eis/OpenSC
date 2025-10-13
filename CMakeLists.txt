@@ -8,6 +8,7 @@ if (NOT DEFINED OPENSC_SCM_REVISION)
 endif()
 
 project("OpenSC" LANGUAGES "C" VERSION ${OPENSC_VERSION})
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
 option(USE_ADDRESS_SANITIZER "Use fast memory error detector." OFF)
 if (USE_ADDRESS_SANITIZER)
@@ -36,9 +37,8 @@ if (USE_ADDRESS_SANITIZER)
     endif()
 endif()
 
-find_package(OpenSSL REQUIRED)
-
 # Create empty config.h -> all definitions that are usually in config.h will be added with add_compile_definitions.
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/include")
 file(TOUCH "${CMAKE_BINARY_DIR}/include/config.h")
 include_directories(common PUBLIC src ${CMAKE_BINARY_DIR}/include/)
 
@@ -54,6 +54,8 @@ add_compile_definitions(
     DEFAULT_SM_MODULE="$<$<NOT:$<BOOL:${WIN32}>>:lib>smm-local$<IF:$<BOOL:${WIN32}>,.dll,.so>"
     DEFAULT_SM_MODULE_PATH="$<IF:$<BOOL:${WIN32}>,%PROGRAMFILES%\\Swissbit AG\\OpenSC\\tools,${CMAKE_INSTALL_FULL_LIBDIR}>"
     ENABLE_PIV_SM
+    ENABLE_PCSC
+    ONLY_PIV
 )
 
 include(CheckCSourceCompiles)
@@ -104,13 +106,18 @@ add_library(scdl STATIC
     src/common/libscdl.h
 )
 
+add_library(notify STATIC
+    src/ui/notify.h
+    src/ui/notify.c
+)
+
 add_library(opensc
     src/libopensc/apdu.c
     src/libopensc/asn1.c
     src/libopensc/asn1.h
     #src/libopensc/authentic.h
-    #src/libopensc/aux-data.c
-    #src/libopensc/aux-data.h
+    src/libopensc/aux-data.c
+    src/libopensc/aux-data.h
     src/libopensc/base64.c
     #src/libopensc/card-asepcos.c
     #src/libopensc/card-atrust-acos.c
@@ -202,13 +209,13 @@ add_library(opensc
     src/libopensc/pace.h
     src/libopensc/padding.c
     #src/libopensc/pkcs15-actalis.c
-    #src/libopensc/pkcs15-algo.c
+    src/libopensc/pkcs15-algo.c
     #src/libopensc/pkcs15-atrust-acos.c
     src/libopensc/pkcs15.c
     #src/libopensc/pkcs15-cac.c
-    #src/libopensc/pkcs15-cache.c
+    src/libopensc/pkcs15-cache.c
     #src/libopensc/pkcs15-cardos.c
-    #src/libopensc/pkcs15-cert.c
+    src/libopensc/pkcs15-cert.c
     #src/libopensc/pkcs15-coolkey.c
     src/libopensc/pkcs15-data.c
     #src/libopensc/pkcs15-din-66291.c
@@ -230,15 +237,15 @@ add_library(opensc
     #src/libopensc/pkcs15-nqApplet.c
     #src/libopensc/pkcs15-oberthur.c
     #src/libopensc/pkcs15-openpgp.c
-    #src/libopensc/pkcs15-pin.c
+    src/libopensc/pkcs15-pin.c
     src/libopensc/pkcs15-piv.c
-    #src/libopensc/pkcs15-prkey.c
+    src/libopensc/pkcs15-prkey.c
     #src/libopensc/pkcs15-pteid.c
     src/libopensc/pkcs15-pubkey.c
     #src/libopensc/pkcs15-sc-hsm.c
     #src/libopensc/pkcs15-sec.c
     #src/libopensc/pkcs15-skeid.c
-    #src/libopensc/pkcs15-skey.c
+    src/libopensc/pkcs15-skey.c
     #src/libopensc/pkcs15-starcert.c
     #src/libopensc/pkcs15-starcos-esign.c
     src/libopensc/pkcs15-syn.c
@@ -272,7 +279,20 @@ add_library(util STATIC
     src/tools/util.c
 )
 
-target_link_libraries(opensc PRIVATE common PUBLIC OpenSSL::Crypto)
+find_package(OpenSSL REQUIRED)
+
+target_link_libraries(opensc PRIVATE common notify PUBLIC OpenSSL::Crypto)
+target_compile_definitions(opensc PRIVATE HAVE_WINSCARD_H)
+
+if(WIN32)
+    target_link_libraries(opensc PUBLIC Winscard)
+    target_compile_definitions(opensc PRIVATE UNICODE _UNICODE DEFAULT_PCSC_PROVIDER="winscard.dll")
+else()
+    find_package(PCSC REQUIRED)
+    target_link_libraries(opensc PUBLIC ${PCSC_LIBRARIES})
+    target_include_directories(opensc PUBLIC ${PCSC_INCLUDE_DIRS})
+    target_compile_definitions(opensc PRIVATE HAVE_PCSCLITE_H HAVE_INTTYPES_H DEFAULT_PCSC_PROVIDER="$<IF:$<BOOL:${APPLE}>,/System/Library/Frameworks/PCSC.framework/PCSC,libpcsclite.so.1>")
+endif()
 
 add_executable(opensc-tool
     src/tools/opensc-tool.c

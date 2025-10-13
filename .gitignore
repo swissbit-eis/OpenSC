@@ -158,4 +158,4 @@ openssl_arm64
 openssl_bin
 openpace_bin
 
-Makefile.am.user
+*.user

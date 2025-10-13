@@ -101,6 +101,7 @@ struct _sc_driver_entry {
 	void *(*func)(void);
 };
 
+#ifndef ONLY_PIV
 // clang-format off
 static const struct _sc_driver_entry internal_card_drivers[] = {
 	/* The card handled by skeid shares the ATR with other cards running CardOS 5.4.
@@ -179,6 +180,16 @@ static const struct _sc_driver_entry old_card_drivers[] = {
 	{ "mcrd",       (void *(*)(void)) sc_get_mcrd_driver },
 	{ NULL, NULL }
 };
+#else
+static const struct _sc_driver_entry internal_card_drivers[] = {
+	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
+	{ NULL, NULL }
+};
+
+static const struct _sc_driver_entry old_card_drivers[] = {
+	{ NULL, NULL }
+};
+#endif
 // clang-format on
 
 struct _sc_ctx_options {
