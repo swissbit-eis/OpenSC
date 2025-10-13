@@ -422,6 +422,7 @@ typedef struct piv_private_data {
 	unsigned long  sm_flags;
 	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
 	piv_sm_session_t sm_session;
+	unsigned int last_transport_sw;
 #endif /* ENABLE_PIV_SM */
 } piv_private_data_t;
 
@@ -1434,6 +1435,7 @@ err:
 static int piv_free_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu)
 {
 	int r = SC_SUCCESS;
+	piv_privvate_data_t *priv = PIV_DATA(card);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1443,6 +1445,9 @@ static int piv_free_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_ap
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 
 	if (plain) {
+		if (priv) {
+			priv->last_transport_sw = (((*sm_apdu)->sw1 << 8) | (*sm_apdu)->sw2);
+		}
 		plain->sw1 = (*sm_apdu)->sw1;
 		plain->sw2 = (*sm_apdu)->sw2;
 		if (((*sm_apdu)->sw1 == 0x90 && (*sm_apdu)->sw2 == 00)
@@ -6040,14 +6045,24 @@ static int piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2
 	/* we stashed the sw1 and sw2 above for verify */
 	/* Check specific NIST sp800-73-4 SM  errors */
 	if (priv && (priv->sm_flags & PIV_SM_FLAGS_SM_IS_ACTIVE)) {
+		unsigned int mapping_sw = ((sw1 << 8) | sw2);
+
+		if (priv->last_transport_sw == 0x9000 && mapping_sw == 0x6982) {
+			/* special-case the ambiguous 0x6982: inner SW 0x6982 means ISO security status */
+			priv->last_transport_sw = 0;
+			goto iso_fallback;
+		}
+		priv->last_transport_sw = 0;
+
 		for (i = 0; piv_sm_errors[i].SWs != 0; i++) {
-			if (piv_sm_errors[i].SWs == ((sw1 << 8) | sw2)) {
+			if (piv_sm_errors[i].SWs == mapping_sw) {
 				sc_log(card->ctx, "%s", piv_sm_errors[i].errorstr);
 				return piv_sm_errors[i].errorno;
 			}
 		}
 	}
 #endif
+iso_fallback:
 	r = iso_drv->ops->check_sw(card, sw1, sw2);
 	return r;
 }
