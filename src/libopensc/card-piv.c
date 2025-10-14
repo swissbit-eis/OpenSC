@@ -1435,7 +1435,7 @@ err:
 static int piv_free_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu)
 {
 	int r = SC_SUCCESS;
-	piv_privvate_data_t *priv = PIV_DATA(card);
+	piv_private_data_t *priv = PIV_DATA(card);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
