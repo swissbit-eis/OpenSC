@@ -6061,8 +6061,8 @@ static int piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2
 			}
 		}
 	}
-#endif
 iso_fallback:
+#endif
 	r = iso_drv->ops->check_sw(card, sw1, sw2);
 	return r;
 }
