@@ -7248,8 +7248,7 @@ static void disassociate_card(PCARD_DATA pCardData)
 	}
 
 	if (vs->dh_agreements) {
-		BYTE i;
-		for (i = 0; i < vs->allocatedAgreements; i++) {
+		for (BYTE i = 0; i < vs->allocatedAgreements; i++) {
 			struct md_dh_agreement *dh_agreement = vs->dh_agreements + i;
 			if (dh_agreement->pbAgreement) {
 				SecureZeroMemory(dh_agreement->pbAgreement, dh_agreement->dwSize);
