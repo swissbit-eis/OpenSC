@@ -7254,8 +7254,8 @@ static void disassociate_card(PCARD_DATA pCardData)
 				SecureZeroMemory(dh_agreement->pbAgreement, dh_agreement->dwSize);
 				pCardData->pfnCspFree(dh_agreement->pbAgreement);
 				dh_agreement->pbAgreement = NULL;
-				dh_agreement->dwSize = 0;
 			}
+			dh_agreement->dwSize = 0;
 		}
 		pCardData->pfnCspFree(vs->dh_agreements);
 		vs->dh_agreements = NULL;
