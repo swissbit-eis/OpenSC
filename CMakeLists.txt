@@ -37,26 +37,10 @@ if (USE_ADDRESS_SANITIZER)
     endif()
 endif()
 
-# Create empty config.h -> all definitions that are usually in config.h will be added with add_compile_definitions.
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/include")
-file(TOUCH "${CMAKE_BINARY_DIR}/include/config.h")
-include_directories(common PUBLIC src ${CMAKE_BINARY_DIR}/include/)
 
 include(GNUInstallDirs)
-add_compile_definitions(
-    PACKAGE_NAME="OpenSC"
-    PACKAGE_VERSION="${CMAKE_PROJECT_VERSION}-swissbit-piv"
-    OPENSC_SCM_REVISION="${OPENSC_SCM_REVISION}"
-    OPENSC_FEATURES="openssl"
-    OPENSC_CONF_PATH="${CMAKE_INSTALL_FULL_SYSCONFDIR}/opensc.conf"
-    ENABLE_OPENSSL
-    ENABLE_SM
-    DEFAULT_SM_MODULE="$<$<NOT:$<BOOL:${WIN32}>>:lib>smm-local$<IF:$<BOOL:${WIN32}>,.dll,.so>"
-    DEFAULT_SM_MODULE_PATH="$<IF:$<BOOL:${WIN32}>,%PROGRAMFILES%\\Swissbit AG\\OpenSC\\tools,${CMAKE_INSTALL_FULL_LIBDIR}>"
-    ENABLE_PIV_SM
-    ENABLE_PCSC
-    ONLY_PIV
-)
+configure_file("config.h.in" "${CMAKE_BINARY_DIR}/include/config.h" @ONLY)
+include_directories(common PUBLIC src ${CMAKE_BINARY_DIR}/include/)
 
 include(CheckCSourceCompiles)
 check_c_source_compiles("
@@ -115,63 +99,14 @@ add_library(opensc
     src/libopensc/apdu.c
     src/libopensc/asn1.c
     src/libopensc/asn1.h
-    #src/libopensc/authentic.h
     src/libopensc/aux-data.c
     src/libopensc/aux-data.h
     src/libopensc/base64.c
-    #src/libopensc/card-asepcos.c
-    #src/libopensc/card-atrust-acos.c
-    #src/libopensc/card-authentic.c
-    #src/libopensc/card-belpic.c
     src/libopensc/card.c
-    #src/libopensc/card-cac1.c
-    #src/libopensc/card-cac.c
-    #src/libopensc/card-cac-common.c
-    #src/libopensc/card-cac-common.h
-    #src/libopensc/card-cardos.c
-    #src/libopensc/card-cardos-common.c
-    #src/libopensc/card-cardos-common.h
-    #src/libopensc/card-coolkey.c
     src/libopensc/cardctl.h
     src/libopensc/card-default.c
-    #src/libopensc/card-dnie.c
-    #src/libopensc/card-dtrust.c
-    #src/libopensc/card-edo.c
-    #src/libopensc/card-entersafe.c
-    #src/libopensc/card-eoi.c
-    #src/libopensc/card-eoi.h
-    #src/libopensc/card-epass2003.c
-    #src/libopensc/card-esteid2018.c
-    #src/libopensc/card-esteid2025.c
-    #src/libopensc/card-flex.c
-    #src/libopensc/card-gemsafeV1.c
-    #src/libopensc/card-gids.c
-    #src/libopensc/card-gids.h
-    #src/libopensc/card-iasecc.c
-    #src/libopensc/card-idprime.c
-    #src/libopensc/card-isoApplet.c
-    #src/libopensc/card-itacns.c
-    #src/libopensc/card-jpki.c
-    #src/libopensc/card-masktech.c
-    #src/libopensc/card-mcrd.c
-    #src/libopensc/card-muscle.c
-    #src/libopensc/card-myeid.c
-    #src/libopensc/card-npa.c
-    #src/libopensc/card-npa.h
-    #src/libopensc/card-nqApplet.c
-    #src/libopensc/card-oberthur.c
-    #src/libopensc/card-openpgp.c
-    #src/libopensc/card-openpgp.h
     src/libopensc/card-piv.c
-    #src/libopensc/card-rtecp.c
-    #src/libopensc/card-rutoken.c
-    #src/libopensc/card-sc-hsm.c
-    #src/libopensc/card-sc-hsm.h
-    #src/libopensc/card-setcos.c
     src/libopensc/cards.h
-    #src/libopensc/card-skeid.c
-    #src/libopensc/card-starcos.c
-    #src/libopensc/card-tcos.c
     src/libopensc/ccid-types.h
     src/libopensc/compression.c
     src/libopensc/compression.h
@@ -208,50 +143,21 @@ add_library(opensc
     src/libopensc/opensc.h
     src/libopensc/pace.h
     src/libopensc/padding.c
-    #src/libopensc/pkcs15-actalis.c
     src/libopensc/pkcs15-algo.c
-    #src/libopensc/pkcs15-atrust-acos.c
     src/libopensc/pkcs15.c
-    #src/libopensc/pkcs15-cac.c
     src/libopensc/pkcs15-cache.c
-    #src/libopensc/pkcs15-cardos.c
     src/libopensc/pkcs15-cert.c
-    #src/libopensc/pkcs15-coolkey.c
     src/libopensc/pkcs15-data.c
-    #src/libopensc/pkcs15-din-66291.c
-    #src/libopensc/pkcs15-dnie.c
-    #src/libopensc/pkcs15-dtrust.c
     src/libopensc/pkcs15-emulator-filter.c
     src/libopensc/pkcs15-emulator-filter.h
-    #src/libopensc/pkcs15-eoi.c
-    #src/libopensc/pkcs15-esinit.c
-    #src/libopensc/pkcs15-esteid2018.c
-    #src/libopensc/pkcs15-esteid2025.c
-    #src/libopensc/pkcs15-gemsafeV1.c
-    #src/libopensc/pkcs15-gids.c
     src/libopensc/pkcs15.h
-    #src/libopensc/pkcs15-iasecc.c
-    #src/libopensc/pkcs15-idprime.c
-    #src/libopensc/pkcs15-itacns.c
-    #src/libopensc/pkcs15-jpki.c
-    #src/libopensc/pkcs15-nqApplet.c
-    #src/libopensc/pkcs15-oberthur.c
-    #src/libopensc/pkcs15-openpgp.c
     src/libopensc/pkcs15-pin.c
     src/libopensc/pkcs15-piv.c
     src/libopensc/pkcs15-prkey.c
-    #src/libopensc/pkcs15-pteid.c
     src/libopensc/pkcs15-pubkey.c
-    #src/libopensc/pkcs15-sc-hsm.c
-    #src/libopensc/pkcs15-sec.c
-    #src/libopensc/pkcs15-skeid.c
     src/libopensc/pkcs15-skey.c
-    #src/libopensc/pkcs15-starcert.c
-    #src/libopensc/pkcs15-starcos-esign.c
     src/libopensc/pkcs15-syn.c
     src/libopensc/pkcs15-syn.h
-    #src/libopensc/pkcs15-tccardos.c
-    #src/libopensc/pkcs15-tcos.c
     src/libopensc/reader-ctapi.c
     src/libopensc/reader-openct.c
     src/libopensc/reader-pcsc.c
@@ -282,10 +188,10 @@ add_library(util STATIC
 find_package(OpenSSL REQUIRED)
 
 target_link_libraries(opensc PRIVATE common notify PUBLIC OpenSSL::Crypto)
-target_compile_definitions(opensc PRIVATE HAVE_WINSCARD_H)
+target_compile_definitions(opensc PRIVATE ONLY_PIV HAVE_WINSCARD_H PUBLIC HAVE_CONFIG_H)
 
 if(WIN32)
-    target_link_libraries(opensc PUBLIC Winscard)
+    target_link_libraries(opensc PUBLIC Winscard ws2_32 shlwapi)
     target_compile_definitions(opensc PRIVATE UNICODE _UNICODE DEFAULT_PCSC_PROVIDER="winscard.dll")
 else()
     find_package(PCSC REQUIRED)
@@ -299,3 +205,10 @@ add_executable(opensc-tool
 )
 
 target_link_libraries(opensc-tool PRIVATE opensc scconf util)
+
+if(WIN32)
+add_library(opensc-minidriver SHARED
+    src/minidriver/minidriver.c
+    src/minidriver/versioninfo-minidriver.rc
+)
+endif()
