@@ -200,6 +200,25 @@ else()
     target_compile_definitions(opensc PRIVATE HAVE_PCSCLITE_H HAVE_INTTYPES_H DEFAULT_PCSC_PROVIDER="$<IF:$<BOOL:${APPLE}>,/System/Library/Frameworks/PCSC.framework/PCSC,libpcsclite.so.1>")
 endif()
 
+install(TARGETS opensc
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+)
+
+install(DIRECTORY src/
+        DESTINATION include
+        FILES_MATCHING
+        PATTERN "tests" EXCLUDE
+        PATTERN "ui" EXCLUDE
+        PATTERN "minidriver" EXCLUDE
+        PATTERN "common" EXCLUDE
+        PATTERN "scconf" EXCLUDE
+        PATTERN "sm" EXCLUDE
+        PATTERN "smm" EXCLUDE
+        PATTERN "tools" EXCLUDE
+        PATTERN "*.h")
+
 add_executable(opensc-tool
     src/tools/opensc-tool.c
 )
