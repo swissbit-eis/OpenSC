@@ -97,6 +97,14 @@
 /* store the instance given at DllMain when attached to access internal resources */
 HINSTANCE g_inst;
 
+static HANDLE g_hGlobalMutex = NULL;
+static const wchar_t *g_wszGlobalMutexName = L"Global\\OpenSC_Minidriver_Lock";
+
+#ifndef InterlockedCompareExchangePointer
+#define InterlockedCompareExchangePointer(Dest, Exch, Comp) \
+	((PVOID)InterlockedCompareExchange((LONG_PTR *)(Dest), (LONG_PTR)(Exch), (LONG_PTR)(Comp)))
+#endif
+
 #define MD_MINIMUM_VERSION_SUPPORTED 7
 #define MD_CURRENT_VERSION_SUPPORTED 7
 
@@ -260,13 +268,6 @@ static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ co
 {
 	va_list arg;
 	VENDOR_SPECIFIC *vs;
-/* Use a simplified log to get all messages including messages
- * before opensc is loaded. The file must be modifiable by all
- * users as we maybe called under lsa or user. Note data from
- * multiple process and threads may get intermingled.
- * flush to get last message before any crash
- * close so as the file is not left open during any wait.
- */
 	DWORD md_debug = 0;
 	size_t sz = sizeof(md_debug);
 	int rv;
@@ -274,9 +275,9 @@ static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ co
 	rv = sc_ctx_win32_get_config_value("CARDMOD_LOW_LEVEL_DEBUG",
 			"MiniDriverDebug", "Software\\OpenSC Project\\OpenSC",
 			(char *)(&md_debug), &sz);
-	if (rv == SC_SUCCESS && md_debug != 0)   {
-		FILE *lldebugfp = fopen("C:\\tmp\\md.log","a+");
-		if (lldebugfp)   {
+	if (rv == SC_SUCCESS && md_debug != 0) {
+		FILE *lldebugfp = fopen("C:\\tmp\\md.log", "a+");
+		if (lldebugfp) {
 			va_start(arg, format);
 			vfprintf(lldebugfp, format, arg);
 			va_end(arg);
@@ -285,13 +286,28 @@ static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ co
 		}
 	}
 
-	va_start(arg, format);
-	if(pCardData != NULL)   {
-		vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
-		if(vs != NULL && vs->ctx != NULL)
-			sc_do_log_noframe(vs->ctx, level, format, arg);
+	/* Diagnostic protection: catch access violation in dereferencing pvVendorSpecific */
+	__try {
+		va_start(arg, format);
+		if (pCardData != NULL) {
+			vs = (VENDOR_SPECIFIC *)(pCardData->pvVendorSpecific);
+			if (vs != NULL && vs->ctx != NULL)
+				sc_do_log_noframe(vs->ctx, level, format, arg);
+		}
+		va_end(arg);
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+		FILE *lldebugfp = fopen("C:\\tmp\\md.log", "a+");
+		if (lldebugfp) {
+			fprintf(lldebugfp,
+					"!!! logprintf: EXCEPTION (likely invalid pvVendorSpecific deref) "
+					"P:%lu T:%lu pCardData=%p !!!\n",
+					(unsigned long)GetCurrentProcessId(),
+					(unsigned long)GetCurrentThreadId(),
+					pCardData);
+			fflush(lldebugfp);
+			fclose(lldebugfp);
+		}
 	}
-	va_end(arg);
 }
 
 static void loghex(PCARD_DATA pCardData, int level, PBYTE data, size_t len)
@@ -374,9 +390,74 @@ static DWORD reinit_card(PCARD_DATA pCardData)
 	MD_FUNC_RETURN(pCardData, 1, SCARD_S_SUCCESS);
 }
 
+/* one-time, thread-safe creation of the global named mutex */
+static BOOL
+create_global_mutex_once(void)
+{
+	if (g_hGlobalMutex != NULL)
+		return TRUE;
+
+	HANDLE h = CreateMutexW(NULL, FALSE, g_wszGlobalMutexName);
+	logprintf(NULL, 1, "CreateMutexW returned %p GetLastError=%lu\n", h, GetLastError());
+	if (h == NULL) {
+		logprintf(NULL, 1, "createmutexw handle is NULL\n");
+		return FALSE;
+	}
+
+	HANDLE prev = (HANDLE)InterlockedCompareExchangePointer(
+			(PVOID *)&g_hGlobalMutex, (PVOID)h, (PVOID)NULL);
+	if (prev != NULL) {
+		logprintf(NULL, 1, "prev is not NULL\n");
+		CloseHandle(h); /* another thread won */
+	}
+
+	return TRUE;
+}
+
+static BOOL
+acquire_global_mutex(DWORD timeout_ms)
+{
+	if (!create_global_mutex_once())
+		return FALSE;
+	DWORD wait = WaitForSingleObject(g_hGlobalMutex, timeout_ms);
+	if (wait == WAIT_OBJECT_0) {
+		logprintf(NULL, 1, "Global Mutex WAIT_OBJECT_0 (acquired)\n");
+		return TRUE;
+	} else if (wait == WAIT_ABANDONED) {
+		logprintf(NULL, 1, "Global Mutex WAIT_ABANDONED (owner acquired)\n");
+		return TRUE;
+	} else if (wait == WAIT_TIMEOUT) {
+		logprintf(NULL, 1, "Global Mutex WAIT_TIMEOUT (not acquire)\n");
+		return FALSE;
+	} else {
+		logprintf(NULL, 1, "Global Mutex WAIT_FAILED err=%lu\n", GetLastError());
+		return FALSE;
+	}
+}
+
+static void
+release_global_mutex(void)
+{
+	if (g_hGlobalMutex) {
+		if (!ReleaseMutex(g_hGlobalMutex)) {
+			logprintf(NULL, 1, "ReleaseMutex FAILED: error=%lu, h=%p\n", GetLastError(), g_hGlobalMutex);
+		} else {
+			logprintf(NULL, 1, "ReleaseMutex ok\n");
+		}
+		if (!CloseHandle(g_hGlobalMutex)) {
+			logprintf(NULL, 1, "CloseHandle Failed: error=%lu\n", GetLastError());
+		} else {
+			g_hGlobalMutex = NULL;
+			logprintf(NULL, 1, "CloseHandle g_hGlobalMutex closed\n");
+		}
+	} else {
+		logprintf(NULL, 1, "release_global_mutex: g_hGlobalMutex is NULL\n");
+	}
+}
+
 static BOOL lock(PCARD_DATA pCardData)
 {
-	if (pCardData) {
+	if (pCardData && pCardData->pvVendorSpecific) {
 		VENDOR_SPECIFIC *vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 		if (vs) {
 			EnterCriticalSection(&vs->hScard_lock);
@@ -389,7 +470,7 @@ static BOOL lock(PCARD_DATA pCardData)
 
 static void unlock(PCARD_DATA pCardData)
 {
-	if (pCardData) {
+	if (pCardData && pCardData->pvVendorSpecific) {
 		VENDOR_SPECIFIC *vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 		if (vs) {
 			LeaveCriticalSection(&vs->hScard_lock);
@@ -3314,7 +3395,6 @@ static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
 DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 {
 	VENDOR_SPECIFIC *vs = NULL;
-	CRITICAL_SECTION hScard_lock;
 
 	MD_FUNC_CALLED(pCardData, 1);
 
@@ -3332,8 +3412,7 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 	if(!vs)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-	hScard_lock = vs->hScard_lock;
-	EnterCriticalSection(&hScard_lock);
+	EnterCriticalSection(&vs->hScard_lock);
 
 	disassociate_card(pCardData);
 	md_fs_finalize(pCardData);
@@ -3346,11 +3425,13 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 
 	logprintf(pCardData, 1, "**********************************************************************\n");
 
-	pCardData->pfnCspFree(pCardData->pvVendorSpecific);
+	LeaveCriticalSection(&vs->hScard_lock);
+	DeleteCriticalSection(&vs->hScard_lock);
+
+	pCardData->pfnCspFree(vs);
 	pCardData->pvVendorSpecific = NULL;
 
-	LeaveCriticalSection(&hScard_lock);
-	DeleteCriticalSection(&hScard_lock);
+	release_global_mutex();
 
 	MD_FUNC_RETURN(pCardData, 1, SCARD_S_SUCCESS);
 }
@@ -7226,7 +7307,12 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 {
 	VENDOR_SPECIFIC *vs;
 	DWORD dwret, suppliedVersion = 0;
-	CRITICAL_SECTION hScard_lock;
+
+	if (!acquire_global_mutex(25000)) {
+		DWORD err = GetLastError();
+		logprintf(NULL, 1, "Global Mutex not acquired!!! Error is %lu\n", err);
+		return (err == WAIT_TIMEOUT) ? SCARD_E_SHARING_VIOLATION : SCARD_F_INTERNAL_ERROR;
+	}
 
 	if (!pCardData)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
@@ -7236,6 +7322,7 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 	if (dwFlags & ~CARD_SECURE_KEY_INJECTION_NO_CARD_MODE)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
+	logprintf(pCardData, 1, "KEY INJECTION checked\n");
 	if (!(dwFlags & CARD_SECURE_KEY_INJECTION_NO_CARD_MODE)) {
 		if (pCardData->hSCardCtx == 0) {
 			logprintf(pCardData, 0, "Invalid handle.\n");
@@ -7251,39 +7338,49 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 		/* secure key injection not supported */
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
+	logprintf(pCardData, 1, "Before pbAtr\n");
 
 	if (pCardData->pbAtr == NULL)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	logprintf(pCardData, 1, "pbAtr checked\n");
 	if ( pCardData->pwszCardName == NULL )
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	logprintf(pCardData, 1, "CardName checked\n");
 	/* <2 length or >33 are not ISO compliant */
 	if (pCardData->cbAtr > 0x21 || pCardData->cbAtr < 0x2)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	logprintf(pCardData, 1, "cbAtr checked\n");
 	/* ATR beginning by 0x00 or 0xFF are not ISO compliant */
 	if (pCardData->pbAtr[0] == 0xFF || pCardData->pbAtr[0] == 0x00)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNKNOWN_CARD);
+	logprintf(pCardData, 1, "pbAtr checked\n");
 	/* 2 bytes ATR is not a known card to microsoft minidriver*/
 	if (pCardData->cbAtr == 2)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNKNOWN_CARD);
+	logprintf(pCardData, 1, "cbAtr size checked\n");
 	/* Memory management functions */
 	if ( ( pCardData->pfnCspAlloc   == NULL ) ||
 		( pCardData->pfnCspReAlloc == NULL ) ||
 		( pCardData->pfnCspFree    == NULL ) )
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
-
+	logprintf(pCardData, 1, "memory management functions checked\n");
 	/* The lowest supported version is 4 - maximum is 7. */
 	if (pCardData->dwVersion < MD_MINIMUM_VERSION_SUPPORTED)
 		MD_FUNC_RETURN(pCardData, 1, (DWORD) ERROR_REVISION_MISMATCH);
 
 	suppliedVersion = pCardData->dwVersion;
-
+	logprintf(pCardData, 1, "Trying to allocate Vendor specific\n");
 	/* VENDOR SPECIFIC */
-	vs = pCardData->pvVendorSpecific = pCardData->pfnCspAlloc(sizeof(VENDOR_SPECIFIC));
+	vs = pCardData->pfnCspAlloc(sizeof(VENDOR_SPECIFIC));
 	if (!vs)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_NO_MEMORY);
 	memset(vs, 0, sizeof(VENDOR_SPECIFIC));
+	pCardData->pvVendorSpecific = vs;
 
+	logprintf(pCardData, 1, "Before Initialize CriticalSection\n");
 	InitializeCriticalSection(&vs->hScard_lock);
+	logprintf(pCardData, 1, "Init CRITICAL_SECTION at %p\n", &vs->hScard_lock);
+
 	lock(pCardData);
 
 	logprintf(pCardData, 1, "==================================================================\n");
@@ -7391,11 +7488,20 @@ ret_release:
 	sc_release_context(vs->ctx);
 
 ret_free:
-	hScard_lock = vs->hScard_lock;
-	pCardData->pfnCspFree(pCardData->pvVendorSpecific);
-	pCardData->pvVendorSpecific = NULL;
-	LeaveCriticalSection(&hScard_lock);
-	DeleteCriticalSection(&hScard_lock);
+	release_global_mutex();
+	if (vs) {
+		/* Ensure we leave critical section if still held */
+		__try {
+			LeaveCriticalSection(&vs->hScard_lock);
+		} __except (EXCEPTION_EXECUTE_HANDLER) {
+			logprintf(pCardData, 1, "failed to leave critical section in ret_free\n");
+		}
+
+		DeleteCriticalSection(&vs->hScard_lock);
+		pCardData->pfnCspFree(vs);
+		pCardData->pvVendorSpecific = NULL;
+	}
+
 	MD_FUNC_RETURN(pCardData, 1, dwret);
 }
 
@@ -7570,6 +7676,9 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 			EAC_cleanup();
 #endif
 		}
+		HANDLE h = (HANDLE)InterlockedExchangePointer((PVOID *)&g_hGlobalMutex, NULL);
+		if (h)
+			CloseHandle(h);
 		break;
 	}
 	return TRUE;
