@@ -4533,7 +4533,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 		 r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
 		 if (r == SC_ERROR_INCORRECT_PARAMETERS) {
 			 r = SC_ERROR_NOT_SUPPORTED;
-		}
+		 }
 	}
 	LOG_TEST_GOTO_ERR(card->ctx, r, "GENERAL AUTHENTICATE failed");
 
@@ -5632,10 +5632,10 @@ static int piv_match_card_continued(sc_card_t *card)
                                 sc_log(card->ctx, "Swissbit card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->swissbit_version);
                         }
                        piv_process_management_key_algorithm(card);
-       }
+		}
 
-       sc_log(card->ctx, "Management key algorithm is 0x%08x", priv->mgmt_key_alg);
-       sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
+		sc_log(card->ctx, "Management key algorithm is 0x%08x", priv->mgmt_key_alg);
+		sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
 	 /* We now know PIV AID is active, test CCC object. 800-73-* say CCC is required */
 	 /* CCC not readable over contactless, unless using VCI. but dont need CCC for SC_CARD_TYPE_PIV_II_800_73_4 */
@@ -5843,9 +5843,9 @@ piv_process_management_key_algorithm(sc_card_t *card)
 	sc_apdu_t apdu;
 	sc_format_apdu(card, &apdu,
 			SC_APDU_CASE_2_SHORT, // command with output data only
-			0xF7,                 // INS: GET METADATA Card Command
-			0x00,                 // P1
-			0x9B                  // P2
+			0xF7,		      // INS: GET METADATA Card Command
+			0x00,		      // P1
+			0x9B		      // P2
 	);
 
 	unsigned char rbuf[13];
