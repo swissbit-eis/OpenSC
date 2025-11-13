@@ -5631,15 +5631,15 @@ static int piv_match_card_continued(sc_card_t *card)
                                                          swissbit_version_buf[2];
                                 sc_log(card->ctx, "Swissbit card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->swissbit_version);
                         }
-                       piv_process_management_key_algorithm(card);
+			piv_process_management_key_algorithm(card);
 		}
 
 		sc_log(card->ctx, "Management key algorithm is 0x%08x", priv->mgmt_key_alg);
-		sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
+		sc_debug(card->ctx, SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
-	 /* We now know PIV AID is active, test CCC object. 800-73-* say CCC is required */
-	 /* CCC not readable over contactless, unless using VCI. but dont need CCC for SC_CARD_TYPE_PIV_II_800_73_4 */
-	switch (card->type) {
+		/* We now know PIV AID is active, test CCC object. 800-73-* say CCC is required */
+		/* CCC not readable over contactless, unless using VCI. but dont need CCC for SC_CARD_TYPE_PIV_II_800_73_4 */
+		switch (card->type) {
 		/*
 		 * For cards that may also be CAC, try and read the CCC
 		 * CCC is required and all Dual PIV/CAC will have a CCC
