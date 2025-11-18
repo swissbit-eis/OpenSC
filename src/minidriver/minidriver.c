@@ -96,7 +96,7 @@
 /* store the instance given at DllMain when attached to access internal resources */
 HINSTANCE g_inst;
 
-#define MD_MINIMUM_VERSION_SUPPORTED 4
+#define MD_MINIMUM_VERSION_SUPPORTED 7
 #define MD_CURRENT_VERSION_SUPPORTED 7
 
 #define NULLSTR(a) (a == NULL ? "<NULL>" : a)
@@ -142,6 +142,7 @@ HINSTANCE g_inst;
 #define SCARD_E_UNSUPPORTED_FEATURE	0x80100022L
 #define SCARD_E_NO_MEMORY		0x80100006L
 #define SCARD_W_WRONG_CHV		0x8010006BL
+#define SCARD_E_DIR_NOT_FOUND		0x80100023L
 #define SCARD_E_FILE_NOT_FOUND		0x80100024L
 #define SCARD_E_UNKNOWN_CARD		0x8010000DL
 #define SCARD_F_UNKNOWN_ERROR		0x80100014L
@@ -1078,7 +1079,7 @@ md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file *
 	if (out)
 		*out = NULL;
 
-	if (!pCardData || !name)
+	if (!pCardData || !name || !*name)
 		return SCARD_E_INVALID_PARAMETER;
 
 	dwret = md_fs_find_directory(pCardData, NULL, parent, &dir);
@@ -1089,7 +1090,7 @@ md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file *
 	}
 	else if (!dir)   {
 		logprintf(pCardData, 2, "directory '%s' not found\n", parent ? parent : "<null>");
-		return SCARD_E_INVALID_PARAMETER;
+		return SCARD_E_DIR_NOT_FOUND;
 	}
 
 	for (file = dir->files; file!=NULL;)   {
@@ -3245,6 +3246,8 @@ static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
 		case SC_ERROR_NOT_ENOUGH_MEMORY:
 			return SCARD_E_NO_MEMORY;
 		case SC_ERROR_NOT_ALLOWED:
+		case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+		case SC_ERROR_SM_NO_SESSION_KEYS:
 			return SCARD_W_SECURITY_VIOLATION;
 		case SC_ERROR_AUTH_METHOD_BLOCKED:
 			return SCARD_W_CHV_BLOCKED;
@@ -3943,16 +3946,50 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
 	__in DWORD  cbResponseData,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
+	VENDOR_SPECIFIC *vs;
+	DWORD dwret;
+	int rv;
+
 	MD_FUNC_CALLED(pCardData, 1);
 
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
 		  (unsigned long)GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardAuthenticateChallenge - unsupported\n");
+	logprintf(pCardData, 1, "CardAuthenticateChallenge\n");
 
-	MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	if (!pCardData || !pbResponseData || !lock(pCardData))
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
+	dwret = check_card_reader_status(pCardData, "CardAuthenticateChallenge");
+	if (dwret != SCARD_S_SUCCESS)
+		goto err;
+
+	vs = (VENDOR_SPECIFIC *)(pCardData->pvVendorSpecific);
+	if (!vs) {
+		dwret = SCARD_E_INVALID_PARAMETER;
+		goto err;
+	}
+
+	// Set attempts remaining to -1 (unknown) as per documentation
+	// because piv management key does not have attempts remaining
+	if (pcAttemptsRemaining)
+		*pcAttemptsRemaining = (DWORD)-1;
+
+	rv = sc_authenticate_challenge(vs->card, pbResponseData, cbResponseData);
+
+	if (rv != SC_SUCCESS) {
+		logprintf(pCardData, 1, "Challenge-response authentication failed: %s\n", sc_strerror(rv));
+
+		dwret = md_translate_OpenSC_to_Windows_error(rv, SCARD_E_UNEXPECTED);
+		goto err;
+	}
+
+	dwret = SCARD_S_SUCCESS;
+
+err:
+	unlock(pCardData);
+	MD_FUNC_RETURN(pCardData, 1, dwret);
 }
-
 
 DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
 	__in LPWSTR pwszUserId,
@@ -4237,7 +4274,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 		  NULLSTR(pszDirectoryName), NULLSTR(pszFileName),
 		  (unsigned long)dwFlags, pcbData, ppbData);
 
-	if (!pszFileName || !strlen(pszFileName) || dwFlags) {
+	if (!pszFileName || !strlen(pszFileName) || dwFlags || !ppbData || !pcbData) {
 		dwret = SCARD_E_INVALID_PARAMETER;
 		goto err;
 	}
@@ -4246,10 +4283,9 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 	if (dwret != SCARD_S_SUCCESS)
 		goto err;
 
-	md_fs_find_file(pCardData, pszDirectoryName, pszFileName, &file);
+	dwret = md_fs_find_file(pCardData, pszDirectoryName, pszFileName, &file);
 	if (!file)   {
 		logprintf(pCardData, 2, "CardReadFile(): file '%s' not found in '%s'\n", NULLSTR(pszFileName), NULLSTR(pszDirectoryName));
-		dwret = SCARD_E_FILE_NOT_FOUND;
 		goto err;
 	}
 
@@ -4425,10 +4461,9 @@ DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData,
 	if (!pszDirectoryName || !strlen(pszDirectoryName))
 		dir = &vs->root;
 	else
-		md_fs_find_directory(pCardData, NULL, pszDirectoryName, &dir);
+		dwret = md_fs_find_directory(pCardData, NULL, pszDirectoryName, &dir);
 	if (!dir)   {
 		logprintf(pCardData, 2, "enum files() failed: directory '%s' not found\n", NULLSTR(pszDirectoryName));
-		dwret = SCARD_E_FILE_NOT_FOUND;
 		goto err;
 	}
 
@@ -4467,8 +4502,12 @@ DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData,
 
 	MD_FUNC_CALLED(pCardData, 1);
 
-	if(!pCardData  || !lock(pCardData))
+	if (!pCardData || !lock(pCardData) || !pCardFileInfo)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
+	if (pCardFileInfo->dwVersion > CARD_FILE_INFO_CURRENT_VERSION) {
+		MD_FUNC_RETURN(pCardData, 1, ERROR_REVISION_MISMATCH);
+	}
 
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
@@ -4479,10 +4518,9 @@ DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData,
 	if (dwret != SCARD_S_SUCCESS)
 		goto err;
 
-	md_fs_find_file(pCardData, pszDirectoryName, pszFileName, &file);
+	dwret = md_fs_find_file(pCardData, pszDirectoryName, pszFileName, &file);
 	if (!file)   {
 		logprintf(pCardData, 2, "CardWriteFile(): file '%s' not found in '%s'\n", NULLSTR(pszFileName), NULLSTR(pszDirectoryName));
-		dwret = SCARD_E_FILE_NOT_FOUND;
 		goto err;
 	}
 
@@ -4503,6 +4541,9 @@ DWORD WINAPI CardQueryFreeSpace(__in PCARD_DATA pCardData, __in DWORD dwFlags,
 
 	MD_FUNC_CALLED(pCardData, 1);
 
+	if (!pCardData || !lock(pCardData) || dwFlags != 0 || !pCardFreeSpaceInfo)
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
 		  (unsigned long)GetCurrentThreadId(), pCardData);
@@ -4510,9 +4551,6 @@ DWORD WINAPI CardQueryFreeSpace(__in PCARD_DATA pCardData, __in DWORD dwFlags,
 		  "CardQueryFreeSpace %p, dwFlags=%lX, version=%lX\n",
 		  pCardFreeSpaceInfo, (unsigned long)dwFlags,
 		  (unsigned long)pCardFreeSpaceInfo->dwVersion);
-
-	if (!pCardData || !lock(pCardData))
-		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	dwret = check_card_status(pCardData, "CardQueryFreeSpace");
 	if (dwret != SCARD_S_SUCCESS)
@@ -4899,7 +4937,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
 		else if (hashAlg !=0) {
 			logprintf(pCardData, 0, "bogus aiHashAlg %i\n", hashAlg);
-			dwret = SCARD_E_UNSUPPORTED_FEATURE;
+			dwret = SCARD_E_INVALID_PARAMETER;
 			goto err;
 		}
 	} else {
@@ -4994,10 +5032,6 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				/* ECDSA_P384 */
 				pInfo->cbSignedData = 384 / 8 * 2;
 				break;
-			case 512:
-				/* ECDSA_P512 : special case !!!*/
-				pInfo->cbSignedData = 132;
-				break;
 			case 521:
 				/* ECDSA_P521 : special case !!!*/
 				pInfo->cbSignedData = 132;
@@ -5010,6 +5044,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				goto err;
 		}
 		opt_crypt_flags &= ~SC_ALGORITHM_RSA_PADS; /* EC does not use this */
+		opt_crypt_flags &= SC_ALGORITHM_ECDSA_HASHES;
 	} else {
 		logprintf(pCardData, 0, "invalid private key\n");
 		dwret = SCARD_E_INVALID_VALUE;
@@ -5884,12 +5919,16 @@ DWORD WINAPI CardGetChallengeEx(__in PCARD_DATA pCardData,
 {
 	MD_FUNC_CALLED(pCardData, 1);
 
-	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
-		  (unsigned long)GetCurrentProcessId(),
-		  (unsigned long)GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardGetChallengeEx - unsupported\n");
+	if (!pCardData || !ppbChallengeData || !pcbChallengeData)
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-	MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
+	if (dwFlags != 0)
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
+	if (PinId != ROLE_ADMIN)
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
+	MD_FUNC_RETURN(pCardData, 1, CardGetChallenge(pCardData, ppbChallengeData, pcbChallengeData));
 }
 
 DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
@@ -6037,18 +6076,24 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	} else {
 		if (pcbSessionPin) *pcbSessionPin = 0;
 		if (ppbSessionPin) *ppbSessionPin = NULL;
-		logprintf(pCardData, 2, "standard pin verification");
-		/*
-		 * TODO the use of auth_method being overridden to do session pin
-		 * conflicts with framework-pkcs15.c use of auth_method  SC_AC_CONTEXT_SPECIFIC
-		 * for a different purpose. But needs to be reviewed
-		 */
-		if (PinId == MD_ROLE_USER_SIGN && vs->need_pin_always) {
-			logprintf(pCardData, 7, "Setting SC_AC_CONTEXT_SPECIFIC cbPinData: %lu old auth_method: %0x auth_id:%x \n",
-					(unsigned long) cbPinData, (unsigned int) auth_info->auth_method, (unsigned char) auth_info->auth_id.value[0]);
-			auth_info->auth_method = SC_AC_CONTEXT_SPECIFIC;
+
+		if (PinId == ROLE_ADMIN) {
+			logprintf(pCardData, 2, "challenge response pin verification");
+			MD_FUNC_RETURN(pCardData, 1, CardAuthenticateChallenge(pCardData, pbPinData, cbPinData, pcAttemptsRemaining));
+		} else {
+			logprintf(pCardData, 2, "standard pin verification");
+			/*
+			 * TODO the use of auth_method being overridden to do session pin
+			 * conflicts with framework-pkcs15.c use of auth_method  SC_AC_CONTEXT_SPECIFIC
+			 * for a different purpose. But needs to be reviewed
+			 */
+			if (PinId == MD_ROLE_USER_SIGN && vs->need_pin_always) {
+				logprintf(pCardData, 7, "Setting SC_AC_CONTEXT_SPECIFIC cbPinData: %lu old auth_method: %0x auth_id:%x \n",
+						(unsigned long)cbPinData, (unsigned int)auth_info->auth_method, (unsigned char)auth_info->auth_id.value[0]);
+				auth_info->auth_method = SC_AC_CONTEXT_SPECIFIC;
+			}
+			r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_VERIFY, vs->p15card, pin_obj, (const u8 *)pbPinData, cbPinData, NULL, NULL, DisplayPinpadUI, PinId);
 		}
-		r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_VERIFY, vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData, NULL, NULL, DisplayPinpadUI, PinId);
 	}
 
 	/* restore the pin type */
@@ -6491,9 +6536,15 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		if (dwFlags != ROLE_EVERYONE && vs->pin_objs[dwFlags] == NULL)
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-		p->PinType = vs->reader->capabilities & SC_READER_CAP_PIN_PAD
-			|| vs->p15card->card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH
-			? ExternalPinType : AlphaNumericPinType;
+		if (dwFlags == ROLE_ADMIN && pCardData->dwVersion >= CARD_DATA_VERSION_SIX) {
+			// For admin PIN in V6 and above, use ChallengeResponsePinType
+			p->PinType = ChallengeResponsePinType;
+		} else {
+			// For other PINs or older versions, use the original logic
+			p->PinType = vs->reader->capabilities & SC_READER_CAP_PIN_PAD || vs->p15card->card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH
+						     ? ExternalPinType
+						     : AlphaNumericPinType;
+		}
 		p->dwFlags = 0;
 		switch (dwFlags)   {
 			case ROLE_EVERYONE:
@@ -7007,17 +7058,17 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	if (!(dwFlags & CARD_SECURE_KEY_INJECTION_NO_CARD_MODE)) {
-		if( pCardData->hSCardCtx == 0)   {
+		if (pCardData->hSCardCtx == 0) {
 			logprintf(pCardData, 0, "Invalid handle.\n");
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_HANDLE);
 		}
-		if( pCardData->hScard == 0)   {
+		if (pCardData->hScard == 0) {
 			logprintf(pCardData, 0, "Invalid handle.\n");
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_HANDLE);
 		}
-	}
-	else
-	{
+	} else {
+		if (pCardData->dwVersion < CARD_DATA_VERSION_SEVEN)
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 		/* secure key injection not supported */
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
@@ -7026,11 +7077,14 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 	if ( pCardData->pwszCardName == NULL )
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
-	/* <2 length or >0x22 are not ISO compliant */
-	if (pCardData->cbAtr > 0x22 || pCardData->cbAtr < 0x2)
+	/* <2 length or >33 are not ISO compliant */
+	if (pCardData->cbAtr > 0x21 || pCardData->cbAtr < 0x2)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 	/* ATR beginning by 0x00 or 0xFF are not ISO compliant */
 	if (pCardData->pbAtr[0] == 0xFF || pCardData->pbAtr[0] == 0x00)
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNKNOWN_CARD);
+	/* 2 bytes ATR is not a known card to microsoft minidriver*/
+	if (pCardData->cbAtr == 2)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNKNOWN_CARD);
 	/* Memory management functions */
 	if ( ( pCardData->pfnCspAlloc   == NULL ) ||
