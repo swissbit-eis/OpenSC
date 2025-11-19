@@ -139,6 +139,7 @@ static struct profile_operations {
 	const char *name;
 	void *func;
 } profile_operations[] = {
+#ifndef ONLY_PIV
 	{ "rutoken", (void *) sc_pkcs15init_get_rutoken_ops },
 	{ "flex", (void *) sc_pkcs15init_get_cryptoflex_ops },
 	{ "cyberflex", (void *) sc_pkcs15init_get_cyberflex_ops },
@@ -161,6 +162,7 @@ static struct profile_operations {
 #ifdef ENABLE_OPENSSL
 	{ "authentic", (void *) sc_pkcs15init_get_authentic_ops },
 	{ "iasecc", (void *) sc_pkcs15init_get_iasecc_ops },
+#endif
 #endif
 	{ NULL, NULL },
 };
