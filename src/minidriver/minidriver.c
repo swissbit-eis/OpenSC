@@ -285,13 +285,28 @@ static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ co
 		}
 	}
 
-	va_start(arg, format);
-	if(pCardData != NULL)   {
-		vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
-		if(vs != NULL && vs->ctx != NULL)
-			sc_do_log_noframe(vs->ctx, level, format, arg);
+	/* Diagnostic protection: catch access violation in dereferencing pvVendorSpecific */
+	__try {
+		va_start(arg, format);
+		if (pCardData != NULL) {
+			vs = (VENDOR_SPECIFIC *)(pCardData->pvVendorSpecific);
+			if (vs != NULL && vs->ctx != NULL)
+				sc_do_log_noframe(vs->ctx, level, format, arg);
+		}
+		va_end(arg);
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+		FILE *lldebugfp = fopen("C:\\tmp\\md.log", "a+");
+		if (lldebugfp) {
+			fprintf(lldebugfp,
+					"!!! logprintf: EXCEPTION (likely invalid pvVendorSpecific deref) "
+					"P:%lu T:%lu pCardData=%p %s!!!\n",
+					(unsigned long)GetCurrentProcessId(),
+					(unsigned long)GetCurrentThreadId(),
+					pCardData, format);
+			fflush(lldebugfp);
+			fclose(lldebugfp);
+		}
 	}
-	va_end(arg);
 }
 
 static void loghex(PCARD_DATA pCardData, int level, PBYTE data, size_t len)
@@ -3314,7 +3329,6 @@ static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
 DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 {
 	VENDOR_SPECIFIC *vs = NULL;
-	CRITICAL_SECTION hScard_lock;
 
 	MD_FUNC_CALLED(pCardData, 1);
 
@@ -3332,8 +3346,7 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 	if(!vs)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-	hScard_lock = vs->hScard_lock;
-	EnterCriticalSection(&hScard_lock);
+	EnterCriticalSection(&vs->hScard_lock);
 
 	disassociate_card(pCardData);
 	md_fs_finalize(pCardData);
@@ -3346,11 +3359,11 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 
 	logprintf(pCardData, 1, "**********************************************************************\n");
 
+	LeaveCriticalSection(&vs->hScard_lock);
+	DeleteCriticalSection(&vs->hScard_lock);
+
 	pCardData->pfnCspFree(pCardData->pvVendorSpecific);
 	pCardData->pvVendorSpecific = NULL;
-
-	LeaveCriticalSection(&hScard_lock);
-	DeleteCriticalSection(&hScard_lock);
 
 	MD_FUNC_RETURN(pCardData, 1, SCARD_S_SUCCESS);
 }
@@ -7222,11 +7235,12 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 {
 	VENDOR_SPECIFIC *vs;
 	DWORD dwret, suppliedVersion = 0;
-	CRITICAL_SECTION hScard_lock;
 
 	if (!pCardData)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
+	/* Init pvVendorSpacific to remove garbage data during multi-process*/
+	pCardData->pvVendorSpecific = NULL;
 	MD_FUNC_CALLED(pCardData, 1);
 
 	if (dwFlags & ~CARD_SECURE_KEY_INJECTION_NO_CARD_MODE)
@@ -7387,11 +7401,10 @@ ret_release:
 	sc_release_context(vs->ctx);
 
 ret_free:
-	hScard_lock = vs->hScard_lock;
+	LeaveCriticalSection(&vs->hScard_lock);
+	DeleteCriticalSection(&vs->hScard_lock);
 	pCardData->pfnCspFree(pCardData->pvVendorSpecific);
 	pCardData->pvVendorSpecific = NULL;
-	LeaveCriticalSection(&hScard_lock);
-	DeleteCriticalSection(&hScard_lock);
 	MD_FUNC_RETURN(pCardData, 1, dwret);
 }
 
