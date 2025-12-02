@@ -5874,7 +5874,7 @@ piv_process_management_key_algorithm(sc_card_t *card)
 }
 
 static int
-get_contactless_policies_status(sc_card_t* card,
+get_contactless_policies_status(sc_card_t *card,
 		u8 *contactless_policies_implemented,
 		u8 *contactless_policies_enforced)
 {
@@ -5882,12 +5882,12 @@ get_contactless_policies_status(sc_card_t* card,
 	sc_apdu_t apdu;
 	sc_format_apdu(card, &apdu,
 			SC_APDU_CASE_4_SHORT, // command with output data only
-			0xCB,                 // INS: GET DATA Card Command
-			0x3F,                 // P1
-			0x00                  // P2
+			0xCB,		      // INS: GET DATA Card Command
+			0x3F,		      // P1
+			0x00		      // P2
 	);
 	// Get prorietary status object with tag 2F4753
-	const u8 cmd_data[] = { 0x5C, 0x03, 0x2F, 0x47, 0x53 };
+	const u8 cmd_data[] = {0x5C, 0x03, 0x2F, 0x47, 0x53};
 	apdu.data = cmd_data;
 	apdu.datalen = sizeof(cmd_data);
 	apdu.lc = sizeof(cmd_data);
@@ -5906,14 +5906,14 @@ get_contactless_policies_status(sc_card_t* card,
 
 	size_t data_len;
 	const u8* data_value =
-		sc_asn1_find_tag(card->ctx, apdu.resp, apdu.resplen, 0x53, &data_len);
+			sc_asn1_find_tag(card->ctx, apdu.resp, apdu.resplen, 0x53, &data_len);
 	if (!data_value) {
 		sc_log(card->ctx, "Invalid STATUS OBJECT");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
 
 	size_t are_contactless_policies_enforced_len;
-	const u8* are_contactless_policies_enforced =
+	const u8 *are_contactless_policies_enforced =
 			sc_asn1_find_tag(card->ctx, data_value, data_len, 0x89,
 					&are_contactless_policies_enforced_len);
 
