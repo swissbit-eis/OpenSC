@@ -5905,7 +5905,7 @@ get_contactless_policies_status(sc_card_t *card,
 	// The STATUS OBJECT is a ASN.1 DATA object (Tag: 0x53)
 
 	size_t data_len;
-	const u8* data_value =
+	const u8 *data_value =
 			sc_asn1_find_tag(card->ctx, apdu.resp, apdu.resplen, 0x53, &data_len);
 	if (!data_value) {
 		sc_log(card->ctx, "Invalid STATUS OBJECT");
