@@ -363,14 +363,14 @@ static const struct sc_card_error piv_sm_errors[] = {
 #endif /* ENABLE_PIV_SM */
 
 /* 800-73-4 3.3.2 Discovery Object - PIN Usage Policy */
-#define PIV_PP_PIN			0x00004000u
-#define PIV_PP_GLOBAL			0x00002000u
-#define PIV_PP_OCC			0x00001000u
-#define PIV_PP_VCI_IMPL			0x00000800u
-#define PIV_PP_VCI_WITHOUT_PC		0x00000400u
-#define PIV_PP_PIV_PRIMARY		0x00000010u
-#define PIV_PP_GLOBAL_PRIMARY		0x00000020u
-#define PIV_PP_CP_ENFORCED		0x00010000u
+#define PIV_PP_PIN		0x00004000u
+#define PIV_PP_GLOBAL		0x00002000u
+#define PIV_PP_OCC		0x00001000u
+#define PIV_PP_VCI_IMPL		0x00000800u
+#define PIV_PP_VCI_WITHOUT_PC	0x00000400u
+#define PIV_PP_PIV_PRIMARY	0x00000010u
+#define PIV_PP_GLOBAL_PRIMARY	0x00000020u
+#define PIV_PP_CP_ENFORCED	0x00010000u
 
 /* init_flags */
 #define PIV_INIT_AID_PARSED			0x00000001u
@@ -5419,12 +5419,11 @@ static int piv_match_card(sc_card_t *card)
 	return 1; /* matched */
 }
 
-
 static int
 piv_get_contactless_policies_status(sc_card_t *card)
 {
 	int r;
-	piv_private_data_t * priv = PIV_DATA(card);
+	piv_private_data_t *priv = PIV_DATA(card);
 	sc_apdu_t apdu;
 	sc_format_apdu(card, &apdu,
 			SC_APDU_CASE_4_SHORT, // command with output data only
@@ -5474,7 +5473,6 @@ piv_get_contactless_policies_status(sc_card_t *card)
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
-
 
 static int piv_match_card_continued(sc_card_t *card)
 {
@@ -5890,7 +5888,6 @@ err:
 	card->type = saved_type;
 	LOG_FUNC_RETURN(card->ctx, r);
 }
-
 
 /*
  * Get the algorithm of the management key for admin operations.
