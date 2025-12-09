@@ -363,13 +363,14 @@ static const struct sc_card_error piv_sm_errors[] = {
 #endif /* ENABLE_PIV_SM */
 
 /* 800-73-4 3.3.2 Discovery Object - PIN Usage Policy */
-#define PIV_PP_PIN		0x00004000u
-#define PIV_PP_GLOBAL		0x00002000u
-#define PIV_PP_OCC		0x00001000u
-#define PIV_PP_VCI_IMPL		0x00000800u
-#define PIV_PP_VCI_WITHOUT_PC	0x00000400u
-#define PIV_PP_PIV_PRIMARY	0x00000010u
-#define PIV_PP_GLOBAL_PRIMARY	0x00000020u
+#define PIV_PP_PIN			0x00004000u
+#define PIV_PP_GLOBAL			0x00002000u
+#define PIV_PP_OCC			0x00001000u
+#define PIV_PP_VCI_IMPL			0x00000800u
+#define PIV_PP_VCI_WITHOUT_PC		0x00000400u
+#define PIV_PP_PIV_PRIMARY		0x00000010u
+#define PIV_PP_GLOBAL_PRIMARY		0x00000020u
+#define PIV_PP_CP_ENFORCED		0x00010000u
 
 /* init_flags */
 #define PIV_INIT_AID_PARSED			0x00000001u
@@ -5419,6 +5420,62 @@ static int piv_match_card(sc_card_t *card)
 }
 
 
+static int
+piv_get_contactless_policies_status(sc_card_t *card)
+{
+	int r;
+	piv_private_data_t * priv = PIV_DATA(card);
+	sc_apdu_t apdu;
+	sc_format_apdu(card, &apdu,
+			SC_APDU_CASE_4_SHORT, // command with output data only
+			0xCB,		      // INS: GET DATA Card Command
+			0x3F,		      // P1
+			0x00		      // P2
+	);
+	// Get prorietary status object with tag 2F4753
+	const u8 cmd_data[] = {0x5C, 0x03, 0x2F, 0x47, 0x53};
+	apdu.data = cmd_data;
+	apdu.datalen = sizeof(cmd_data);
+	apdu.lc = sizeof(cmd_data);
+	u8 rsp[256];
+	apdu.resp = rsp;
+	apdu.resplen = sizeof(rsp);
+	apdu.le = sizeof(rsp);
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "Transmit GET DATA for STATUS OBJECT failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "GET DATA for STATUS OBJECT command failed");
+
+	size_t data_len;
+	const u8 *data_value =
+			sc_asn1_find_tag(card->ctx, apdu.resp, apdu.resplen, 0x53, &data_len);
+	if (!data_value) {
+		sc_log(card->ctx, "Invalid STATUS OBJECT");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
+	}
+
+	size_t is_contactless_policies_enforced_len;
+	const u8 *is_contactless_policies_enforced =
+			sc_asn1_find_tag(card->ctx, data_value, data_len, 0x89,
+					&is_contactless_policies_enforced_len);
+
+	if (is_contactless_policies_enforced &&
+			is_contactless_policies_enforced_len != 1) {
+		sc_log(card->ctx,
+				"Contactless policies enforced field 0x89 has invalid length");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
+	}
+	if (*is_contactless_policies_enforced) {
+		priv->pin_policy |= PIV_PP_CP_ENFORCED;
+	}
+	sc_log(card->ctx, "Contactless policies%s enforced", *is_contactless_policies_enforced ? "" : " not");
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
 static int piv_match_card_continued(sc_card_t *card)
 {
 	int i, r = 0, r2 = 0;
@@ -5632,6 +5689,8 @@ static int piv_match_card_continued(sc_card_t *card)
                                 sc_log(card->ctx, "Swissbit card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->swissbit_version);
                         }
 			piv_process_management_key_algorithm(card);
+
+			piv_get_contactless_policies_status(card);
 		}
 
 		sc_log(card->ctx, "Management key algorithm is 0x%08x", priv->mgmt_key_alg);
@@ -5832,6 +5891,7 @@ err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+
 /*
  * Get the algorithm of the management key for admin operations.
  */
@@ -5873,68 +5933,6 @@ piv_process_management_key_algorithm(sc_card_t *card)
 	return SC_SUCCESS;
 }
 
-static int
-get_contactless_policies_status(sc_card_t *card,
-		u8 *contactless_policies_implemented,
-		u8 *contactless_policies_enforced)
-{
-	int r;
-	sc_apdu_t apdu;
-	sc_format_apdu(card, &apdu,
-			SC_APDU_CASE_4_SHORT, // command with output data only
-			0xCB,		      // INS: GET DATA Card Command
-			0x3F,		      // P1
-			0x00		      // P2
-	);
-	// Get prorietary status object with tag 2F4753
-	const u8 cmd_data[] = {0x5C, 0x03, 0x2F, 0x47, 0x53};
-	apdu.data = cmd_data;
-	apdu.datalen = sizeof(cmd_data);
-	apdu.lc = sizeof(cmd_data);
-	u8 rsp[256];
-	apdu.resp = rsp;
-	apdu.resplen = sizeof(rsp);
-	apdu.le = sizeof(rsp);
-
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "Transmit GET DATA for STATUS OBJECT failed");
-
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "GET DATA for STATUS OBJECT command failed");
-
-	// The STATUS OBJECT is a ASN.1 DATA object (Tag: 0x53)
-
-	size_t data_len;
-	const u8 *data_value =
-			sc_asn1_find_tag(card->ctx, apdu.resp, apdu.resplen, 0x53, &data_len);
-	if (!data_value) {
-		sc_log(card->ctx, "Invalid STATUS OBJECT");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
-	}
-
-	size_t are_contactless_policies_enforced_len;
-	const u8 *are_contactless_policies_enforced =
-			sc_asn1_find_tag(card->ctx, data_value, data_len, 0x89,
-					&are_contactless_policies_enforced_len);
-
-	if (are_contactless_policies_enforced &&
-			are_contactless_policies_enforced_len != 1) {
-		sc_log(card->ctx,
-				"Contactless policies enforced field 0x89 has invalid length");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
-	}
-	if (are_contactless_policies_enforced) {
-		*contactless_policies_enforced = *are_contactless_policies_enforced;
-		*contactless_policies_implemented = 1;
-	} else {
-		*contactless_policies_implemented = 0;
-	}
-	sc_log(card->ctx, "Contactless policies%s implemented and%s enforced", *contactless_policies_implemented ? "" : " not",
-			*contactless_policies_enforced ? "" : " not");
-
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-}
-
 static int piv_init(sc_card_t *card)
 {
 	int r = 0;
@@ -5943,12 +5941,6 @@ static int piv_init(sc_card_t *card)
 	unsigned long flags_eddsa;
 	unsigned long flags_xeddsa;
 	unsigned long ext_flags;
-
-	u8 contactless_policies_implemented = 0;
-	u8 contactless_policies_enforced = 0;
-	r = get_contactless_policies_status(card, &contactless_policies_implemented,
-			&contactless_policies_enforced);
-	LOG_TEST_RET(card->ctx, r, "Could not get contactless policies status");
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -6061,7 +6053,7 @@ static int piv_init(sc_card_t *card)
 			sc_log(card->ctx,"Contactless and no card support for VCI");
 			r = SC_SUCCESS; /* User should know VCI is not possible with their card; use like 800-73-3 contactless  */
 
-		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS) && !(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC) && (priv->pairing_code[0] == 0x00) && (contactless_policies_implemented && contactless_policies_enforced)) {
+		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS) && !(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC) && (priv->pin_policy & PIV_PP_CP_ENFORCED) && (priv->pairing_code[0] == 0x00)) {
 			sc_log(card->ctx,"Contactless, pairing_code required and no pairing code");
 			r = SC_ERROR_PIN_CODE_INCORRECT; /* User should know they need to set pairing code */
 
