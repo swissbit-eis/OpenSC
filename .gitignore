@@ -8,7 +8,6 @@ aminclude_static.am
 autom4te.cache
 compile
 confdefs.h
-config.*
 configure
 conftest
 conftest.c
