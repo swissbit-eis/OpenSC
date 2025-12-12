@@ -370,7 +370,6 @@ static const struct sc_card_error piv_sm_errors[] = {
 #define PIV_PP_VCI_WITHOUT_PC	0x00000400u
 #define PIV_PP_PIV_PRIMARY	0x00000010u
 #define PIV_PP_GLOBAL_PRIMARY	0x00000020u
-#define PIV_PP_CP_ENFORCED	0x00010000u
 
 /* init_flags */
 #define PIV_INIT_AID_PARSED			0x00000001u
@@ -5466,8 +5465,9 @@ piv_get_contactless_policies_status(sc_card_t *card)
 				"Contactless policies enforced field 0x89 has invalid length");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
-	if (*is_contactless_policies_enforced) {
-		priv->pin_policy |= PIV_PP_CP_ENFORCED;
+	if (!(*is_contactless_policies_enforced)) {
+		/* Remove contactless flag because there is no difference between contact and conctactless without contactless policies enforced */
+		priv->init_flags &= ~PIV_INIT_CONTACTLESS;
 	}
 	sc_log(card->ctx, "Contactless policies%s enforced", *is_contactless_policies_enforced ? "" : " not");
 
@@ -6050,7 +6050,7 @@ static int piv_init(sc_card_t *card)
 			sc_log(card->ctx,"Contactless and no card support for VCI");
 			r = SC_SUCCESS; /* User should know VCI is not possible with their card; use like 800-73-3 contactless  */
 
-		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS) && !(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC) && (priv->pin_policy & PIV_PP_CP_ENFORCED) && (priv->pairing_code[0] == 0x00)) {
+		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS) && !(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC) && (priv->pairing_code[0] == 0x00)) {
 			sc_log(card->ctx,"Contactless, pairing_code required and no pairing code");
 			r = SC_ERROR_PIN_CODE_INCORRECT; /* User should know they need to set pairing code */
 
