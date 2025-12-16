@@ -5459,6 +5459,11 @@ piv_get_contactless_policies_status(sc_card_t *card)
 			sc_asn1_find_tag(card->ctx, data_value, data_len, 0x89,
 					&is_contactless_policies_enforced_len);
 
+	if (is_contactless_policies_enforced == NULL) {
+	    sc_log(card->ctx, "No contactless polices object found");
+	    LOG_FUNC_RETURN(card->ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
+	}
+
 	if (is_contactless_policies_enforced &&
 			is_contactless_policies_enforced_len != 1) {
 		sc_log(card->ctx,
@@ -6050,7 +6055,9 @@ static int piv_init(sc_card_t *card)
 			sc_log(card->ctx,"Contactless and no card support for VCI");
 			r = SC_SUCCESS; /* User should know VCI is not possible with their card; use like 800-73-3 contactless  */
 
-		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS) && !(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC) && (priv->pairing_code[0] == 0x00)) {
+		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS)
+				&& !(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC)
+				&& (priv->pairing_code[0] == 0x00)) {
 			sc_log(card->ctx,"Contactless, pairing_code required and no pairing code");
 			r = SC_ERROR_PIN_CODE_INCORRECT; /* User should know they need to set pairing code */
 
