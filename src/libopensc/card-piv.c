@@ -5454,27 +5454,27 @@ piv_get_contactless_policies_status(sc_card_t *card)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
 
-	size_t is_contactless_policies_enforced_len;
-	const u8 *is_contactless_policies_enforced =
+	size_t contactless_policies_enforced_data_len;
+	const u8 *contactless_policies_enforced_data =
 			sc_asn1_find_tag(card->ctx, data_value, data_len, 0x89,
-					&is_contactless_policies_enforced_len);
+					&contactless_policies_enforced_data_len);
 
-	if (is_contactless_policies_enforced == NULL) {
+	if (!contactless_policies_enforced_data) {
 		sc_log(card->ctx, "No contactless polices object found");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
 	}
 
-	if (is_contactless_policies_enforced &&
-			is_contactless_policies_enforced_len != 1) {
+	if (contactless_policies_enforced_data &&
+			contactless_policies_enforced_data_len != 1) {
 		sc_log(card->ctx,
 				"Contactless policies enforced field 0x89 has invalid length");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
-	if (!(*is_contactless_policies_enforced)) {
-		/* Remove contactless flag because there is no difference between contact and conctactless without contactless policies enforced */
+	if (!(*contactless_policies_enforced_data)) {
+		/* Remove contactless flag because there is no difference between contact and contactless without contactless policies enforced */
 		priv->init_flags &= ~PIV_INIT_CONTACTLESS;
 	}
-	sc_log(card->ctx, "Contactless policies%s enforced", *is_contactless_policies_enforced ? "" : " not");
+	sc_log(card->ctx, "Contactless policies%s enforced", *contactless_policies_enforced_data ? "" : " not");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
