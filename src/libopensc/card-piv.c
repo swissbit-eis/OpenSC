@@ -5460,8 +5460,8 @@ piv_get_contactless_policies_status(sc_card_t *card)
 					&is_contactless_policies_enforced_len);
 
 	if (is_contactless_policies_enforced == NULL) {
-	    sc_log(card->ctx, "No contactless polices object found");
-	    LOG_FUNC_RETURN(card->ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
+		sc_log(card->ctx, "No contactless polices object found");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
 	}
 
 	if (is_contactless_policies_enforced &&
