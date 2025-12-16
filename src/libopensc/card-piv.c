@@ -5464,8 +5464,7 @@ piv_get_contactless_policies_status(sc_card_t *card)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
 	}
 
-	if (contactless_policies_enforced_data &&
-			contactless_policies_enforced_data_len != 1) {
+	if (contactless_policies_enforced_data_len != 1) {
 		sc_log(card->ctx,
 				"Contactless policies enforced field 0x89 has invalid length");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
