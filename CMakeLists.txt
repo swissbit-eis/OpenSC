@@ -25,7 +25,7 @@ if (USE_ADDRESS_SANITIZER)
             $<$<CONFIG:DEBUG>:/Zi>
         )
         message(STATUS "MSVC Address sanitizer enabled.
-        This is still an experimantal feature, therefore the clang_rt.asan_*.dll DLLs are not installed in system32.
+        This is still an experimental feature, therefore the clang_rt.asan_*.dll DLLs are not installed in system32.
         You have to add the VC++ redistributable package to your PATH.
         E.g.: C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC\\14.28.29910\\bin\\Hostx64\\x64
         Otherwise you will get an errors like
@@ -90,29 +90,34 @@ add_library(common STATIC
     src/common/simclist.h
 )
 set_target_properties(common PROPERTIES LINKER_LANGUAGE C)
+target_compile_definitions(common PUBLIC HAVE_CONFIG_H)
 if(HAVE_BUILTIN_OVERFLOW)
     target_compile_definitions(common PRIVATE HAVE_BUILTIN_OVERFLOW)
 endif()
 
-add_library(pkcs11 STATIC
+add_library(libpkcs11 STATIC
     src/common/libpkcs11.c
     src/common/libpkcs11.h
 )
-set_target_properties(pkcs11 PROPERTIES LINKER_LANGUAGE C)
+set_target_properties(libpkcs11 PROPERTIES LINKER_LANGUAGE C)
 
-add_library(scdl STATIC
+add_library(libscdl STATIC
     src/common/libscdl.c
     src/common/libscdl.h
 )
-set_target_properties(scdl PROPERTIES LINKER_LANGUAGE C)
+set_target_properties(libscdl PROPERTIES LINKER_LANGUAGE C)
 
 add_library(notify STATIC
     src/ui/notify.h
     src/ui/notify.c
+)
+set_target_properties(notify PROPERTIES LINKER_LANGUAGE C)
+
+add_library(strings STATIC
     src/ui/strings.h
     src/ui/strings.c
 )
-set_target_properties(notify PROPERTIES LINKER_LANGUAGE C)
+set_target_properties(strings PROPERTIES LINKER_LANGUAGE C)
 
 add_library(scconf STATIC
     src/scconf/scconf.c
@@ -123,11 +128,6 @@ add_library(scconf STATIC
 )
 set_target_properties(scconf PROPERTIES LINKER_LANGUAGE C)
 
-add_library(util STATIC
-    src/tools/util.c
-)
-set_target_properties(util PROPERTIES LINKER_LANGUAGE C)
-
 add_library(pkcs15init STATIC
     src/pkcs15init/pkcs15-lib.c
     src/pkcs15init/profile.c
@@ -135,7 +135,22 @@ add_library(pkcs15init STATIC
 set_target_properties(pkcs15init PROPERTIES LINKER_LANGUAGE C)
 target_link_libraries(pkcs15init PRIVATE OpenSSL::Crypto)
 
-add_library(opensc
+add_library(libsmiso STATIC
+    src/sm/sm-iso.c
+    src/sm/sm-iso.h
+    src/sm/sm-iso-internal.h
+)
+set_target_properties(libsmiso PROPERTIES LINKER_LANGUAGE C)
+target_link_libraries(libsmiso PUBLIC OpenSSL::Crypto)
+
+add_library(libsmeac STATIC
+    src/sm/sm-eac.c
+    src/sm/sm-eac.h
+)
+set_target_properties(libsmeac PROPERTIES LINKER_LANGUAGE C)
+target_link_libraries(libsmeac PRIVATE libsmiso)
+
+set(opensc_SOURCES
     src/libopensc/apdu.c
     src/libopensc/asn1.c
     src/libopensc/asn1.h
@@ -168,6 +183,7 @@ add_library(opensc
     src/libopensc/iasecc-sdo.c
     src/libopensc/iasecc-sdo.h
     src/libopensc/iasecc-sm.c
+    src/libopensc/card-iasecc.c
     src/libopensc/internal.h
     src/libopensc/internal-winscard.h
     src/libopensc/iso7816.c
@@ -213,8 +229,10 @@ add_library(opensc
     src/libopensc/sm.h
     src/libopensc/types.h
 )
+
+add_library(opensc ${opensc_SOURCES} $<$<BOOL:${WIN32}>:win32/versioninfo.rc>)
 set_target_properties(opensc PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(opensc PRIVATE common notify PUBLIC OpenSSL::Crypto)
+target_link_libraries(opensc PRIVATE common notify strings scconf pkcs15init libsmeac PUBLIC OpenSSL::Crypto)
 target_compile_definitions(opensc PRIVATE HAVE_WINSCARD_H PUBLIC HAVE_CONFIG_H)
 
 if(WIN32)
@@ -227,7 +245,61 @@ else()
     target_compile_definitions(opensc PRIVATE HAVE_PCSCLITE_H HAVE_INTTYPES_H DEFAULT_PCSC_PROVIDER="$<IF:$<BOOL:${APPLE}>,/System/Library/Frameworks/PCSC.framework/PCSC,libpcsclite.so.1>")
 endif()
 
+file(READ "${CMAKE_SOURCE_DIR}/src/libopensc/libopensc.exports" LIBOPENSC_EXPORTS)
+# Remove undefined symbols in ONLY_PIV build
+string(REPLACE "npa_reset_retry_counter\n" "" LIBOPENSC_EXPORTS "${LIBOPENSC_EXPORTS}")
+string(REGEX REPLACE "sc_pkcs15init_get_.*_ops\n" "" LIBOPENSC_EXPORTS "${LIBOPENSC_EXPORTS}")
+file(WRITE "${CMAKE_BINARY_DIR}/libopensc.def" "LIBRARY libopensc\nEXPORTS\n${LIBOPENSC_EXPORTS}")
+target_sources(opensc PRIVATE "${CMAKE_BINARY_DIR}/libopensc.def")
+
 install(TARGETS opensc
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+)
+
+add_library(opensc_a STATIC ${opensc_SOURCES})
+set_target_properties(opensc_a PROPERTIES LINKER_LANGUAGE C)
+target_link_libraries(opensc_a PRIVATE common notify strings scconf pkcs15init libsmeac PUBLIC OpenSSL::Crypto)
+target_compile_definitions(opensc_a PRIVATE HAVE_WINSCARD_H PUBLIC HAVE_CONFIG_H)
+
+if(WIN32)
+    target_link_libraries(opensc_a PUBLIC Winscard ws2_32 shlwapi)
+    target_compile_definitions(opensc_a PRIVATE UNICODE _UNICODE DEFAULT_PCSC_PROVIDER="winscard.dll")
+else()
+    find_package(PCSC REQUIRED)
+    target_link_libraries(opensc_a PUBLIC ${PCSC_LIBRARIES})
+    target_include_directories(opensc_a PUBLIC ${PCSC_INCLUDE_DIRS})
+    target_compile_definitions(opensc_a PRIVATE HAVE_PCSCLITE_H HAVE_INTTYPES_H DEFAULT_PCSC_PROVIDER="$<IF:$<BOOL:${APPLE}>,/System/Library/Frameworks/PCSC.framework/PCSC,libpcsclite.so.1>")
+endif()
+
+add_library(opensc-pkcs11 SHARED
+    src/pkcs11/debug.c
+    src/pkcs11/framework-pkcs15.c
+    src/pkcs11/framework-pkcs15init.c
+    src/pkcs11/mechanism.c
+    src/pkcs11/misc.c
+    src/pkcs11/openssl.c
+    src/pkcs11/pkcs11-display.c
+    src/pkcs11/pkcs11-display.h
+    src/pkcs11/pkcs11-global.c
+    src/pkcs11/pkcs11-object.c
+    src/pkcs11/pkcs11-opensc.h
+    src/pkcs11/pkcs11-session.c
+    src/pkcs11/pkcs11.h
+    src/pkcs11/sc-pkcs11.h
+    src/pkcs11/slot.c
+    $<$<BOOL:${WIN32}>:src/pkcs11/versioninfo-pkcs11.rc>
+)
+set_target_properties(opensc-pkcs11 PROPERTIES LINKER_LANGUAGE C)
+target_link_libraries(opensc-pkcs11 PRIVATE opensc_a PUBLIC OpenSSL::Crypto)
+target_compile_definitions(opensc-pkcs11 PUBLIC PKCS11_THREAD_LOCKING)
+
+file(READ "${CMAKE_SOURCE_DIR}/src/pkcs11/pkcs11.exports" PKCS11_EXPORTS)
+file(WRITE "${CMAKE_BINARY_DIR}/pkcs11.def" "LIBRARY pkcs11\nEXPORTS\n${PKCS11_EXPORTS}")
+target_sources(opensc-pkcs11 PRIVATE "${CMAKE_BINARY_DIR}/pkcs11.def")
+
+install(TARGETS opensc-pkcs11
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
@@ -246,11 +318,64 @@ install(DIRECTORY src/
         PATTERN "tools" EXCLUDE
         PATTERN "*.h")
 
+add_library(libsm STATIC
+    src/sm/sm-common.c
+    src/sm/sm-common.h
+)
+set_target_properties(libsm PROPERTIES LINKER_LANGUAGE C)
+target_link_libraries(libsm PRIVATE opensc_a)
+
+add_library(smm-local
+	src/smm/smm-local.c
+    src/smm/sm-module.h
+	src/smm/sm-global-platform.c
+    src/smm/sm-cwa14890.c
+	src/smm/sm-card-authentic.c
+    src/smm/sm-card-iasecc.c
+)
+set_target_properties(smm-local PROPERTIES LINKER_LANGUAGE C)
+target_link_libraries(smm-local PRIVATE libsm opensc_a)
+
+file(READ "${CMAKE_SOURCE_DIR}/src/smm/smm-local.exports" SMM_LOCAL_EXPORTS)
+file(WRITE "${CMAKE_BINARY_DIR}/smm-local.def" "LIBRARY smm-local\nEXPORTS\n${SMM_LOCAL_EXPORTS}")
+target_sources(smm-local PRIVATE "${CMAKE_BINARY_DIR}/smm-local.def")
+
+install(TARGETS smm-local
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+)
+
+add_library(pkcs11-spy SHARED
+    src/pkcs11/pkcs11-spy.c
+    src/pkcs11/pkcs11-display.c
+    src/pkcs11/pkcs11-display.h
+    $<$<BOOL:${WIN32}>:src/pkcs11/versioninfo-pkcs11-spy.rc>
+)
+set_target_properties(pkcs11-spy PROPERTIES LINKER_LANGUAGE C)
+target_link_libraries(pkcs11-spy PRIVATE opensc_a)
+
+install(TARGETS pkcs11-spy
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+)
+
 add_executable(opensc-tool
     src/tools/opensc-tool.c
+    src/tools/util.c
+    src/tools/util.h
+    $<$<BOOL:${WIN32}>:src/tools/versioninfo-tools.rc>
 )
 set_target_properties(opensc-tool PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(opensc-tool PRIVATE opensc scconf util)
+target_link_libraries(opensc-tool PRIVATE opensc_a)
+
+add_executable(opensc-notify
+    src/tools/opensc-notify.c
+    $<$<BOOL:${WIN32}>:src/tools/versioninfo-opensc-notify.rc>
+)
+set_target_properties(opensc-notify PROPERTIES LINKER_LANGUAGE C)
+target_link_libraries(opensc-notify PRIVATE opensc_a)
 
 if(WIN32)
     add_library(opensc-minidriver SHARED
@@ -262,7 +387,7 @@ if(WIN32)
 
     # Link libraries matching Makefile.mak
     target_link_libraries(opensc-minidriver PRIVATE
-        opensc pkcs15init scconf common scdl notify
+        opensc_a pkcs15init scconf libscdl notify
         ws2_32 gdi32 Comctl32 advapi32 Crypt32 User32
         bcrypt DelayImp Rpcrt4 Shell32 Winmm shlwapi
     )
@@ -306,11 +431,11 @@ if(WIN32)
         "${CMAKE_BINARY_DIR}/packages/wixtoolset.dutil/5.0.2/build/native/include"
     )
 
-    # Map CMAKE_SYSTEM_PROCESSOR to NuGet library architecture
-    if(CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
+    # Map CMAKE_C_COMPILER_ARCHITECTURE_ID to NuGet library architecture
+    if(CMAKE_C_COMPILER_ARCHITECTURE_ID STREQUAL "AMD64")
         set(NUGET_ARCH "x64")
     else()
-        set(NUGET_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+        set(NUGET_ARCH "${CMAKE_C_COMPILER_ARCHITECTURE_ID}")
     endif()
 
     # Link WcaUtil and DUtil libraries
@@ -328,20 +453,37 @@ if(WIN32)
     target_sources(customactions PRIVATE "${CMAKE_BINARY_DIR}/customactions.def")
 
     configure_file(
+        "${CMAKE_SOURCE_DIR}/etc/opensc.conf.in"
+        "${CMAKE_BINARY_DIR}/opensc.conf"
+        @ONLY
+    )
+
+    configure_file(
         "${CMAKE_SOURCE_DIR}/win32/OpenSC.wxs.in"
         "${CMAKE_BINARY_DIR}/OpenSC.wxs"
         @ONLY
     )
 
+    set(WIX_COMMAND
+        wix build -arch ${NUGET_ARCH}
+        -ext WixToolset.UI.wixext
+        -ext WixToolset.Util.wixext
+        -d SOURCE_DIR=${CMAKE_SOURCE_DIR}
+        -d BINARY_DIR=${CMAKE_BINARY_DIR}
+        -d BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -d CMAKE_BUILD
+        -o "${CMAKE_BINARY_DIR}/OpenSC.msi"
+        "${CMAKE_BINARY_DIR}/OpenSC.wxs"
+    )
+
+    if(SIGNED_DLLS)
+        list(APPEND WIX_COMMAND -d SignedDLLs)
+    endif()
+
     add_custom_target(msi-installer
-        COMMAND wix build -arch ${NUGET_ARCH}
-                -ext WixToolset.UI.wixext
-                -ext WixToolset.Util.wixext
-                -d SOURCE_DIR=${CMAKE_SOURCE_DIR}
-                -o "${CMAKE_BINARY_DIR}/OpenSC.msi"
-                "${CMAKE_BINARY_DIR}/OpenSC.wxs"
-        DEPENDS customactions opensc-minidriver opensc opensc-tool
-        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+        COMMAND ${WIX_COMMAND}
+        DEPENDS customactions opensc-minidriver opensc-pkcs11 opensc smm-local pkcs11-spy opensc-tool opensc-notify
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/win32"
         COMMENT "Building MSI installer package using WiX Toolset (${NUGET_ARCH})"
         VERBATIM
     )

@@ -61,6 +61,7 @@
 
 #define HAVE_STRNLEN
 #define HAVE_IO_H
+#define HAVE_SYS_TIMEB_H 1
 #endif
 
 #endif
