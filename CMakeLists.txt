@@ -471,13 +471,14 @@ if(WIN32)
         -d SOURCE_DIR=${CMAKE_SOURCE_DIR}
         -d BINARY_DIR=${CMAKE_BINARY_DIR}
         -d BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -d OpenSSL="${OPENSSL_BINARY_DIR}"
         -d CMAKE_BUILD
         -o "${CMAKE_BINARY_DIR}/OpenSC.msi"
         "${CMAKE_BINARY_DIR}/OpenSC.wxs"
     )
 
     if(SIGNED_DLLS)
-        list(APPEND WIX_COMMAND -d SignedDLLs)
+        list(APPEND WIX_COMMAND -d SignedDLLs=1)
     endif()
 
     add_custom_target(msi-installer
