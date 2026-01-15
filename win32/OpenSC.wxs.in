@@ -16,7 +16,7 @@
   <?endif?>
   <?define PlatformUpgradeCode = "{63666c12-c4b5-4e55-87af-3babcd563c28}" ?>
   <?define BUILD_ARCH = "ARM64" ?>
-  <?define SUFFIX = "_arm64" ?>
+  <?define SUFFIX = "" ?>
 <?else?>
   <?ifndef OpenSSL ?>
     <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light" ?>
@@ -78,7 +78,7 @@
           <Component Id="opensc.conf">
             <File Source="$(var.SOURCE_DIR)\etc\opensc.conf" KeyPath="yes" />
             <!-- -->
-            <RegistryKey Root="HKLM" Key="Software\[Manufacturer]\OpenSC">
+            <RegistryKey Root="HKLM" Key="Software\[Manufacturer]\OpenSC$(var.SUFFIX)">
               <RegistryValue Type="string" Name="ConfigFile" Value="[INSTALLDIR]opensc.conf" />
               <RegistryValue Type="string" Name="ProfileDir" Value="[INSTALLDIR]profiles" />
               <RegistryValue Type="string" Name="SmDir" Value="[INSTALLDIR]tools" />
@@ -91,7 +91,7 @@
             </Component>
             <Component Id="AddPIVAuthKey" Guid="*">
               <RegistryValue Root="HKLM"
-                              Key="Software\[Manufacturer]\OpenSC\Settings"
+                              Key="Software\[Manufacturer]\OpenSC$(var.SUFFIX)\Settings"
                               Name="PIVAuthKeySet"
                               Type="integer"
                               Value="1"
@@ -166,7 +166,7 @@
           </Component>
               <Component Id="AddToolsToPath" Guid="*">
                 <RegistryValue Root="HKLM"
-                               Key="Software\[Manufacturer]\OpenSC\Settings"
+                               Key="Software\[Manufacturer]\OpenSC$(var.SUFFIX)\Settings"
                                Name="ToolsPathInstalled"
                                Type="integer"
                                Value="1"
