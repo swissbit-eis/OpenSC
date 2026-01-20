@@ -159,13 +159,13 @@ static struct profile_operations {
 		{"sc-hsm",	   (void *)sc_pkcs15init_get_sc_hsm_ops    },
 		{"isoApplet",    (void *)sc_pkcs15init_get_isoApplet_ops },
 		{"gids",	 (void *)sc_pkcs15init_get_gids_ops	   },
- #ifdef ENABLE_OPENSSL
+#ifdef ENABLE_OPENSSL
 		{"authentic",    (void *)sc_pkcs15init_get_authentic_ops },
 		{"iasecc",	   (void *)sc_pkcs15init_get_iasecc_ops    },
- #endif
- #endif
+#endif
+#endif
 		{NULL,	       NULL				    },
- };
+};
 
 static struct sc_pkcs15init_callbacks callbacks = {
 	NULL,
