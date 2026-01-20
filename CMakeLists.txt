@@ -110,12 +110,16 @@ set_target_properties(libscdl PROPERTIES LINKER_LANGUAGE C)
 add_library(notify STATIC
     src/ui/notify.h
     src/ui/notify.c
+    src/ui/invisible_window.h
 )
 set_target_properties(notify PROPERTIES LINKER_LANGUAGE C)
+target_compile_definitions(notify PUBLIC HAVE_CONFIG_H)
 
 add_library(strings STATIC
     src/ui/strings.h
     src/ui/strings.c
+    src/ui/wchar_from_char_str.h
+    src/ui/char_str_from_wchar.h
 )
 set_target_properties(strings PROPERTIES LINKER_LANGUAGE C)
 
@@ -125,12 +129,15 @@ add_library(scconf STATIC
     src/scconf/parse.c
     src/scconf/sclex.c
     src/scconf/write.c
+    src/scconf/internal.h
 )
 set_target_properties(scconf PROPERTIES LINKER_LANGUAGE C)
 
 add_library(pkcs15init STATIC
+    src/pkcs15init/pkcs15-init.h
     src/pkcs15init/pkcs15-lib.c
     src/pkcs15init/profile.c
+    src/pkcs15init/profile.h
 )
 set_target_properties(pkcs15init PROPERTIES LINKER_LANGUAGE C)
 target_link_libraries(pkcs15init PRIVATE OpenSSL::Crypto)
@@ -141,14 +148,12 @@ add_library(libsmiso STATIC
     src/sm/sm-iso-internal.h
 )
 set_target_properties(libsmiso PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(libsmiso PUBLIC OpenSSL::Crypto)
 
 add_library(libsmeac STATIC
     src/sm/sm-eac.c
     src/sm/sm-eac.h
 )
 set_target_properties(libsmeac PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(libsmeac PRIVATE libsmiso)
 
 set(opensc_SOURCES
     src/libopensc/apdu.c
@@ -232,17 +237,25 @@ set(opensc_SOURCES
 
 add_library(opensc ${opensc_SOURCES} $<$<BOOL:${WIN32}>:win32/versioninfo.rc>)
 set_target_properties(opensc PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(opensc PRIVATE common notify strings scconf pkcs15init libsmeac PUBLIC OpenSSL::Crypto)
+target_link_libraries(opensc PRIVATE pkcs15init scconf common notify strings libsmiso libsmeac PUBLIC OpenSSL::Crypto)
 target_compile_definitions(opensc PRIVATE HAVE_WINSCARD_H PUBLIC HAVE_CONFIG_H)
 
 if(WIN32)
-    target_link_libraries(opensc PUBLIC Winscard ws2_32 shlwapi)
-    target_compile_definitions(opensc PRIVATE UNICODE _UNICODE DEFAULT_PCSC_PROVIDER="winscard.dll")
+    target_link_libraries(opensc PUBLIC Winscard ws2_32 shlwapi Comctl32)
+    target_compile_definitions(opensc PRIVATE DEFAULT_PCSC_PROVIDER="winscard.dll")
 else()
     find_package(PCSC REQUIRED)
     target_link_libraries(opensc PUBLIC ${PCSC_LIBRARIES})
     target_include_directories(opensc PUBLIC ${PCSC_INCLUDE_DIRS})
     target_compile_definitions(opensc PRIVATE HAVE_PCSCLITE_H HAVE_INTTYPES_H DEFAULT_PCSC_PROVIDER="$<IF:$<BOOL:${APPLE}>,/System/Library/Frameworks/PCSC.framework/PCSC,libpcsclite.so.1>")
+endif()
+
+if(MSVC)
+    target_link_options(opensc PRIVATE
+        "/SUBSYSTEM:WINDOWS"
+        "/MANIFEST:EMBED"
+        "/MANIFESTINPUT:${CMAKE_SOURCE_DIR}/src/libopensc/opensc.dll.manifest"
+    )
 endif()
 
 file(READ "${CMAKE_SOURCE_DIR}/src/libopensc/libopensc.exports" LIBOPENSC_EXPORTS)
@@ -260,12 +273,12 @@ install(TARGETS opensc
 
 add_library(opensc_a STATIC ${opensc_SOURCES})
 set_target_properties(opensc_a PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(opensc_a PRIVATE common notify strings scconf pkcs15init libsmeac PUBLIC OpenSSL::Crypto)
+target_link_libraries(opensc_a PRIVATE pkcs15init scconf common notify strings libsmiso libsmeac PUBLIC OpenSSL::Crypto)
 target_compile_definitions(opensc_a PRIVATE HAVE_WINSCARD_H PUBLIC HAVE_CONFIG_H)
 
 if(WIN32)
-    target_link_libraries(opensc_a PUBLIC Winscard ws2_32 shlwapi)
-    target_compile_definitions(opensc_a PRIVATE UNICODE _UNICODE DEFAULT_PCSC_PROVIDER="winscard.dll")
+    target_link_libraries(opensc_a PUBLIC Winscard ws2_32 shlwapi Comctl32)
+    target_compile_definitions(opensc_a PRIVATE DEFAULT_PCSC_PROVIDER="winscard.dll")
 else()
     find_package(PCSC REQUIRED)
     target_link_libraries(opensc_a PUBLIC ${PCSC_LIBRARIES})
@@ -292,8 +305,19 @@ add_library(opensc-pkcs11 SHARED
     $<$<BOOL:${WIN32}>:src/pkcs11/versioninfo-pkcs11.rc>
 )
 set_target_properties(opensc-pkcs11 PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(opensc-pkcs11 PRIVATE opensc_a PUBLIC OpenSSL::Crypto)
+target_link_libraries(opensc-pkcs11 PRIVATE opensc_a pkcs15init common scconf notify strings libsmiso libsmeac PUBLIC OpenSSL::Crypto)
 target_compile_definitions(opensc-pkcs11 PUBLIC PKCS11_THREAD_LOCKING)
+if(WIN32)
+    target_link_libraries(opensc-pkcs11 PUBLIC shlwapi Comctl32)
+endif()
+
+if(MSVC)
+    target_link_options(opensc-pkcs11 PRIVATE
+        "/SUBSYSTEM:WINDOWS"
+        "/MANIFEST:EMBED"
+        "/MANIFESTINPUT:${CMAKE_SOURCE_DIR}/src/pkcs11/opensc-pkcs11.dll.manifest"
+    )
+endif()
 
 file(READ "${CMAKE_SOURCE_DIR}/src/pkcs11/pkcs11.exports" PKCS11_EXPORTS)
 file(WRITE "${CMAKE_BINARY_DIR}/pkcs11.def" "LIBRARY pkcs11\nEXPORTS\n${PKCS11_EXPORTS}")
@@ -323,18 +347,30 @@ add_library(libsm STATIC
     src/sm/sm-common.h
 )
 set_target_properties(libsm PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(libsm PRIVATE opensc_a)
+target_link_libraries(libsm PUBLIC OpenSSL::Crypto)
+target_compile_definitions(libsm PUBLIC HAVE_CONFIG_H)
 
-add_library(smm-local
-	src/smm/smm-local.c
+add_library(smm-local SHARED
+    src/smm/smm-local.c
     src/smm/sm-module.h
-	src/smm/sm-global-platform.c
+    src/smm/sm-global-platform.c
     src/smm/sm-cwa14890.c
-	src/smm/sm-card-authentic.c
+    src/smm/sm-card-authentic.c
     src/smm/sm-card-iasecc.c
 )
 set_target_properties(smm-local PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(smm-local PRIVATE libsm opensc_a)
+target_link_libraries(smm-local PRIVATE libsm opensc_a pkcs15init common scconf notify strings libsmiso libsmeac)
+if(WIN32)
+    target_link_libraries(smm-local PUBLIC shlwapi Comctl32)
+endif()
+
+if(MSVC)
+    target_link_options(smm-local PRIVATE
+        "/SUBSYSTEM:WINDOWS"
+        "/MANIFEST:EMBED"
+        "/MANIFESTINPUT:${CMAKE_SOURCE_DIR}/src/smm/smm-local.dll.manifest"
+    )
+endif()
 
 file(READ "${CMAKE_SOURCE_DIR}/src/smm/smm-local.exports" SMM_LOCAL_EXPORTS)
 file(WRITE "${CMAKE_BINARY_DIR}/smm-local.def" "LIBRARY smm-local\nEXPORTS\n${SMM_LOCAL_EXPORTS}")
@@ -353,7 +389,10 @@ add_library(pkcs11-spy SHARED
     $<$<BOOL:${WIN32}>:src/pkcs11/versioninfo-pkcs11-spy.rc>
 )
 set_target_properties(pkcs11-spy PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(pkcs11-spy PRIVATE opensc_a)
+target_link_libraries(pkcs11-spy PRIVATE opensc_a pkcs15init common scconf notify strings libsmiso libsmeac PUBLIC OpenSSL::Crypto)
+if(WIN32)
+    target_link_libraries(pkcs11-spy PUBLIC shlwapi)
+endif()
 
 install(TARGETS pkcs11-spy
         RUNTIME DESTINATION bin
@@ -368,14 +407,35 @@ add_executable(opensc-tool
     $<$<BOOL:${WIN32}>:src/tools/versioninfo-tools.rc>
 )
 set_target_properties(opensc-tool PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(opensc-tool PRIVATE opensc_a)
+target_link_libraries(opensc-tool PRIVATE opensc_a scconf common notify strings)
+if(WIN32)
+    target_link_libraries(opensc-tool PUBLIC shlwapi Comctl32)
+endif()
+
+if(MSVC)
+    target_link_options(opensc-tool PRIVATE
+        "/MANIFEST:EMBED"
+        "/MANIFESTINPUT:${CMAKE_SOURCE_DIR}/src/tools/exe.manifest"
+    )
+endif()
 
 add_executable(opensc-notify
     src/tools/opensc-notify.c
     $<$<BOOL:${WIN32}>:src/tools/versioninfo-opensc-notify.rc>
 )
 set_target_properties(opensc-notify PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(opensc-notify PRIVATE opensc_a)
+target_link_libraries(opensc-notify PRIVATE opensc_a scconf common notify strings)
+if(WIN32)
+    target_link_libraries(opensc-notify PUBLIC shlwapi Comctl32)
+endif()
+
+if(MSVC)
+    target_link_options(opensc-notify PRIVATE
+        "/SUBSYSTEM:WINDOWS"
+        "/MANIFEST:EMBED"
+        "/MANIFESTINPUT:${CMAKE_SOURCE_DIR}/src/tools/exe.manifest"
+    )
+endif()
 
 if(WIN32)
     add_library(opensc-minidriver SHARED
@@ -387,10 +447,18 @@ if(WIN32)
 
     # Link libraries matching Makefile.mak
     target_link_libraries(opensc-minidriver PRIVATE
-        opensc_a pkcs15init scconf libscdl notify
-        ws2_32 gdi32 Comctl32 advapi32 Crypt32 User32
+        opensc_a pkcs15init scconf common notify strings libsmiso libsmeac
+        PUBLIC ws2_32 gdi32 Comctl32 advapi32 Crypt32 User32
         bcrypt DelayImp Rpcrt4 Shell32 Winmm shlwapi
     )
+
+    if(MSVC)
+        target_link_options(opensc-minidriver PRIVATE
+            "/SUBSYSTEM:WINDOWS"
+            "/MANIFEST:EMBED"
+            "/MANIFESTINPUT:${CMAKE_SOURCE_DIR}/src/minidriver/opensc-minidriver.dll.manifest"
+        )
+    endif()
 
     # Create .def file with exports
     file(READ "${CMAKE_SOURCE_DIR}/src/minidriver/minidriver.exports" MINIDRIVER_EXPORTS)
