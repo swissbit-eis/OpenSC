@@ -165,7 +165,6 @@ static struct profile_operations {
 	{ NULL, NULL },
 };
 
-
 static struct sc_pkcs15init_callbacks callbacks = {
 	NULL,
 	NULL,
