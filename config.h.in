@@ -1,6 +1,11 @@
 #ifndef OPENSC_CONFIG_H
 #define OPENSC_CONFIG_H
 
+#cmakedefine HAVE_UNISTD_H 1
+#cmakedefine HAVE_PTHREAD 1
+#cmakedefine HAVE_PTHREAD_H 1
+#cmakedefine HAVE_DLFCN_H 1
+
 #define ENABLE_OPENSSL 1
 #define ENABLE_SM 1
 #define ENABLE_PIV_SM 1
@@ -63,6 +68,18 @@
 #define HAVE_STRNLEN
 #define HAVE_IO_H
 #define HAVE_SYS_TIMEB_H 1
+#else
+#ifndef PACKAGE_VERSION
+#define PACKAGE_VERSION "@PACKAGE_VERSION@"
+#endif
+
+#ifndef VERSION
+#define VERSION PACKAGE_VERSION
+#endif
+
+#define SC_PKCS15_PROFILE_DIRECTORY "@SC_PKCS15_PROFILE_DIRECTORY@"
+#define HAVE_SYS_TIME_H 1
+#define HAVE_GETTIMEOFDAY 1
 #endif
 
 #endif
