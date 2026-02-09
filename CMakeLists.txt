@@ -441,18 +441,11 @@ if(MSVC)
     )
 endif()
 
-if(WIN32)
-    add_executable(opensc-notify
-        src/tools/opensc-notify.c
-        $<$<BOOL:${WIN32}>:src/tools/versioninfo-opensc-notify.rc>
-    )
-else()
-    add_executable(opensc-notify
-        src/tools/opensc-notify.c
-        src/tools/opensc-notify-cmdline.c
-        $<$<BOOL:${WIN32}>:src/tools/versioninfo-opensc-notify.rc>
-    )
-endif()
+add_executable(opensc-notify
+    src/tools/opensc-notify.c
+    $<$<NOT:$<BOOL:${WIN32}>>:src/tools/opensc-notify-cmdline.c>
+    $<$<BOOL:${WIN32}>:src/tools/versioninfo-opensc-notify.rc>
+)
 target_include_directories(opensc-notify PRIVATE ${CMAKE_SOURCE_DIR}/src/tools)
 set_target_properties(opensc-notify PROPERTIES LINKER_LANGUAGE C)
 target_link_libraries(opensc-notify PRIVATE opensc_a scconf common notify strings)
