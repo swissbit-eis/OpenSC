@@ -16,7 +16,7 @@
   <?endif?>
   <?define PlatformUpgradeCode = "{63666c12-c4b5-4e55-87af-3babcd563c28}" ?>
   <?define BUILD_ARCH = "ARM64" ?>
-  <?define SUFFIX = "_arm64" ?>
+  <?define SUFFIX = "" ?>
 <?else?>
   <?ifndef OpenSSL ?>
     <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light" ?>
@@ -78,7 +78,7 @@
           <Component Id="opensc.conf">
             <File Source="$(var.SOURCE_DIR)\etc\opensc.conf" KeyPath="yes" />
             <!-- -->
-            <RegistryKey Root="HKLM" Key="Software\[Manufacturer]\OpenSC">
+            <RegistryKey Root="HKLM" Key="Software\[Manufacturer]\OpenSC$(var.SUFFIX)">
               <RegistryValue Type="string" Name="ConfigFile" Value="[INSTALLDIR]opensc.conf" />
               <RegistryValue Type="string" Name="ProfileDir" Value="[INSTALLDIR]profiles" />
               <RegistryValue Type="string" Name="SmDir" Value="[INSTALLDIR]tools" />
@@ -91,7 +91,7 @@
             </Component>
             <Component Id="AddPIVAuthKey" Guid="*">
               <RegistryValue Root="HKLM"
-                              Key="Software\[Manufacturer]\OpenSC\Settings"
+                              Key="Software\[Manufacturer]\OpenSC$(var.SUFFIX)\Settings"
                               Name="PIVAuthKeySet"
                               Type="integer"
                               Value="1"
@@ -108,20 +108,11 @@
 
           <Directory Id="INSTALLDIR_MINIDRIVER" Name="minidriver">
             <?ifdef SignedDLLs ?>
-              <?if $(sys.BUILDARCH) = x64 ?>
-                <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\signed_dlls\windows64\opensc-minidriver.dll" />
-                <File Id="ishield_piv_module.dll" Source="$(var.SOURCE_DIR)\signed_dlls\windows64\ishield_piv_module.dll"/>
-              <?else ?>
-                <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\signed_dlls\windows32\opensc-minidriver.dll" />
-                <File Id="ishield_piv_module.dll" Source="$(var.SOURCE_DIR)\signed_dlls\windows32\ishield_piv_module.dll"/>
-              <?endif ?>
+              <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\signed_dlls\$(sys.BUILDARCH)\opensc-minidriver.dll" />
+              <File Id="ishield_piv_module.dll" Source="$(var.SOURCE_DIR)\signed_dlls\$(sys.BUILDARCH)\ishield_piv_module.dll"/>
             <?else ?>
               <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" />
-              <?if $(sys.BUILDARCH) = x64 ?>
-                <File Id="ishield_piv_module.dll" Source="$(var.SOURCE_DIR)\etc\win64\ishield_piv_module.dll"/>
-              <?else ?>
-                <File Id="ishield_piv_module.dll" Source="$(var.SOURCE_DIR)\etc\win32\ishield_piv_module.dll"/>
-              <?endif ?>
+              <File Id="ishield_piv_module.dll" Source="$(var.SOURCE_DIR)\etc\$(sys.BUILDARCH)\ishield_piv_module.dll"/>
             <?endif ?>
             <!-- The ishield_piv_module.dll depends on opensc.dll which is usually installed into the tools directory.
                  The tools directory is added to the PATH environment. However, installing the tools is optional.
@@ -175,7 +166,7 @@
           </Component>
               <Component Id="AddToolsToPath" Guid="*">
                 <RegistryValue Root="HKLM"
-                               Key="Software\[Manufacturer]\OpenSC\Settings"
+                               Key="Software\[Manufacturer]\OpenSC$(var.SUFFIX)\Settings"
                                Name="ToolsPathInstalled"
                                Type="integer"
                                Value="1"
