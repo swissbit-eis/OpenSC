@@ -326,7 +326,10 @@ add_library(opensc-pkcs11 SHARED
 target_include_directories(opensc-pkcs11
   BEFORE PRIVATE "${CMAKE_BINARY_DIR}/include"
 )
-set_target_properties(opensc-pkcs11 PROPERTIES LINKER_LANGUAGE C)
+set_target_properties(opensc-pkcs11 PROPERTIES
+    LINKER_LANGUAGE C
+    PREFIX ""
+)
 target_link_libraries(opensc-pkcs11 PRIVATE opensc_a pkcs15init common scconf notify strings libsmiso libsmeac Threads::Threads PUBLIC OpenSSL::Crypto)
 target_compile_definitions(opensc-pkcs11 PUBLIC PKCS11_THREAD_LOCKING HAVE_CONFIG_H)
 if(WIN32)
@@ -410,7 +413,10 @@ add_library(pkcs11-spy SHARED
     src/pkcs11/pkcs11-display.h
     $<$<BOOL:${WIN32}>:src/pkcs11/versioninfo-pkcs11-spy.rc>
 )
-set_target_properties(pkcs11-spy PROPERTIES LINKER_LANGUAGE C)
+set_target_properties(pkcs11-spy PROPERTIES
+    LINKER_LANGUAGE C
+    PREFIX ""
+)
 target_link_libraries(pkcs11-spy PRIVATE opensc_a pkcs15init common scconf notify strings libsmiso libsmeac PUBLIC OpenSSL::Crypto)
 if(WIN32)
     target_link_libraries(pkcs11-spy PUBLIC shlwapi)
