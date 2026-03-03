@@ -10,22 +10,21 @@ endif()
 project("OpenSC" LANGUAGES "C" "CXX" VERSION ${OPENSC_VERSION})
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
-include(CheckIncludeFile)
-include(CheckFunctionExists)
-include(GNUInstallDirs)
+if(NOT WIN32)
+  include(CheckIncludeFile)
+  include(GNUInstallDirs)
 
-check_include_file("unistd.h"  HAVE_UNISTD_H)
-check_include_file("pthread.h" HAVE_PTHREAD_H)
-check_include_file("dlfcn.h"   HAVE_DLFCN_H)
+  check_include_file("pthread.h" HAVE_PTHREAD_H)
 
-find_package(Threads REQUIRED)
-set(HAVE_PTHREAD 0)
-if(Threads_FOUND AND HAVE_PTHREAD_H)
-  set(HAVE_PTHREAD 1)
+  find_package(Threads REQUIRED)
+  set(HAVE_PTHREAD 0)
+  if(Threads_FOUND AND HAVE_PTHREAD_H)
+    set(HAVE_PTHREAD 1)
+  endif()
+
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+  set(SC_PKCS15_PROFILE_DIRECTORY "${CMAKE_INSTALL_FULL_DATADIR}/opensc")
 endif()
-
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(SC_PKCS15_PROFILE_DIRECTORY "${CMAKE_INSTALL_FULL_DATADIR}/opensc")
 
 find_package(OpenSSL REQUIRED)
 
@@ -156,8 +155,6 @@ add_library(pkcs15init STATIC
     src/pkcs15init/profile.c
     src/pkcs15init/profile.h
 )
-target_compile_definitions(pkcs15init PRIVATE HAVE_CONFIG_H)
-target_include_directories(pkcs15init BEFORE PRIVATE "${CMAKE_BINARY_DIR}/include")
 set_target_properties(pkcs15init PROPERTIES LINKER_LANGUAGE C)
 target_link_libraries(pkcs15init PRIVATE OpenSSL::Crypto)
 
@@ -266,7 +263,7 @@ else()
     find_package(PCSC REQUIRED)
     target_link_libraries(opensc PUBLIC ${PCSC_LIBRARIES})
     target_include_directories(opensc PUBLIC ${PCSC_INCLUDE_DIRS})
-    target_compile_definitions(opensc PRIVATE HAVE_PCSCLITE_H HAVE_INTTYPES_H DEFAULT_PCSC_PROVIDER="$<IF:$<BOOL:${APPLE}>,/System/Library/Frameworks/PCSC.framework/PCSC,libpcsclite.so.1>")
+    target_compile_definitions(opensc PRIVATE HAVE_PCSCLITE_H HAVE_INTTYPES_H DEFAULT_PCSC_PROVIDER="$<IF:$<BOOL:${APPLE}>,/System/Library/Frameworks/PCSC.framework/PCSC,libpcsclite.so.1>" SC_PKCS15_PROFILE_DIRECTORY="@SC_PKCS15_PROFILE_DIRECTORY@")
 endif()
 
 if(MSVC)
@@ -323,15 +320,12 @@ add_library(opensc-pkcs11 SHARED
     src/pkcs11/slot.c
     $<$<BOOL:${WIN32}>:src/pkcs11/versioninfo-pkcs11.rc>
 )
-target_include_directories(opensc-pkcs11
-  BEFORE PRIVATE "${CMAKE_BINARY_DIR}/include"
-)
 set_target_properties(opensc-pkcs11 PROPERTIES
     LINKER_LANGUAGE C
     PREFIX ""
 )
-target_link_libraries(opensc-pkcs11 PRIVATE opensc_a pkcs15init common scconf notify strings libsmiso libsmeac Threads::Threads PUBLIC OpenSSL::Crypto)
-target_compile_definitions(opensc-pkcs11 PUBLIC PKCS11_THREAD_LOCKING HAVE_CONFIG_H)
+target_link_libraries(opensc-pkcs11 PRIVATE opensc_a pkcs15init common scconf notify strings libsmiso libsmeac PUBLIC OpenSSL::Crypto)
+target_compile_definitions(opensc-pkcs11 PUBLIC PKCS11_THREAD_LOCKING)
 if(WIN32)
     target_link_libraries(opensc-pkcs11 PUBLIC shlwapi Comctl32)
 endif()
@@ -452,7 +446,6 @@ add_executable(opensc-notify
     $<$<NOT:$<BOOL:${WIN32}>>:src/tools/opensc-notify-cmdline.c>
     $<$<BOOL:${WIN32}>:src/tools/versioninfo-opensc-notify.rc>
 )
-target_include_directories(opensc-notify PRIVATE ${CMAKE_SOURCE_DIR}/src/tools)
 set_target_properties(opensc-notify PROPERTIES LINKER_LANGUAGE C)
 target_link_libraries(opensc-notify PRIVATE opensc_a scconf common notify strings)
 if(WIN32)
