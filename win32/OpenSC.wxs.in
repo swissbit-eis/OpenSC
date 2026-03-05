@@ -51,7 +51,11 @@
     <Property Id="ARPPRODUCTICON" Value="swissbit.ico" />
 
     <!--Custom actions-->
-    <Binary Id="customactions" SourceFile="$(var.SOURCE_DIR)\win32\customactions.dll" />
+    <?ifdef CMAKE_BUILD ?>
+      <Binary Id="customactions" SourceFile="$(var.BINARY_DIR)\$(var.BUILD_TYPE)\customactions.dll" />
+    <?else ?>
+      <Binary Id="customactions" SourceFile="$(var.SOURCE_DIR)\win32\customactions.dll" />
+    <?endif ?>
     <CustomAction Id="RemoveSmartCardConfiguration" BinaryRef="customactions" DllEntry="RemoveSmartCardConfiguration" Execute="deferred" Impersonate="no" />
     <CustomAction Id="AddSmartCardConfiguration" BinaryRef="customactions" DllEntry="AddSmartCardConfiguration" Execute="commit" Impersonate="no" />
 
@@ -76,7 +80,11 @@
         <Directory Id="INSTALLDIR" Name="OpenSC$(var.SUFFIX)">
           <!-- opensc.conf sample goes to installation directory -->
           <Component Id="opensc.conf">
-            <File Source="$(var.SOURCE_DIR)\etc\opensc.conf" KeyPath="yes" />
+            <?ifdef CMAKE_BUILD ?>
+              <File Source="$(var.BINARY_DIR)\opensc.conf" KeyPath="yes" />
+            <?else ?>
+              <File Source="$(var.SOURCE_DIR)\etc\opensc.conf" KeyPath="yes" />
+            <?endif ?>
             <!-- -->
             <RegistryKey Root="HKLM" Key="Software\[Manufacturer]\OpenSC$(var.SUFFIX)">
               <RegistryValue Type="string" Name="ConfigFile" Value="[INSTALLDIR]opensc.conf" />
@@ -111,7 +119,11 @@
               <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\signed_dlls\$(sys.BUILDARCH)\opensc-minidriver.dll" />
               <File Id="ishield_piv_module.dll" Source="$(var.SOURCE_DIR)\signed_dlls\$(sys.BUILDARCH)\ishield_piv_module.dll"/>
             <?else ?>
-              <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" />
+              <?ifdef CMAKE_BUILD ?>
+                <File Id="opensc_minidriver.dll" Source="$(var.BINARY_DIR)\$(var.BUILD_TYPE)\opensc-minidriver.dll" />
+              <?else ?>
+                <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" />
+              <?endif ?>
               <File Id="ishield_piv_module.dll" Source="$(var.SOURCE_DIR)\etc\$(sys.BUILDARCH)\ishield_piv_module.dll"/>
             <?endif ?>
             <!-- The ishield_piv_module.dll depends on opensc.dll which is usually installed into the tools directory.
@@ -119,7 +131,11 @@
                  Therefore the DLL is put next to the minidriver DLLs. That way it is found when the minidriver is loaded
                  and does not pollute the PATH.
             -->
-            <File Id="opensc.dll_for_ishield_piv_module" Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" />
+            <?ifdef CMAKE_BUILD ?>
+              <File Id="opensc.dll_for_ishield_piv_module" Source="$(var.BINARY_DIR)\$(var.BUILD_TYPE)\opensc.dll" />
+            <?else ?>
+              <File Id="opensc.dll_for_ishield_piv_module" Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" />
+            <?endif ?>
             <!-- U -->
             <!-- install an alias for the Base smart card CSP. Using a different CSP in minidriver installation deactivate the plug and play feature
                 but not all other components like the pin change screen available after ctrl+alt+del.
@@ -153,8 +169,13 @@
           </Directory>
 
           <Directory Id="INSTALLDIR_PKCS11" Name="pkcs11">
-            <File Id="opensc_pkcs11.dll" Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" />
-            <File Id="onepin_opensc_pkcs11.dll" Name="onepin-opensc-pkcs11.dll" Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" />
+            <?ifdef CMAKE_BUILD ?>
+              <File Id="opensc_pkcs11.dll" Source="$(var.BINARY_DIR)\$(var.BUILD_TYPE)\opensc-pkcs11.dll" />
+              <File Id="onepin_opensc_pkcs11.dll" Name="onepin-opensc-pkcs11.dll" Source="$(var.BINARY_DIR)\$(var.BUILD_TYPE)\opensc-pkcs11.dll" />
+            <?else ?>
+              <File Id="opensc_pkcs11.dll" Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" />
+              <File Id="onepin_opensc_pkcs11.dll" Name="onepin-opensc-pkcs11.dll" Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" />
+            <?endif ?>
           </Directory>
 
           <Directory Id="INSTALLDIR_TOOLS" Name="tools" />
@@ -187,7 +208,11 @@
         </Directory>
         <Directory Id="PKCS11SPYINSTALLDIR" Name="PKCS11-Spy">
           <Component Id="pkcs11_spy.dll">
-            <File Source="$(var.SOURCE_DIR)\src\pkcs11\pkcs11-spy.dll" />
+            <?ifdef CMAKE_BUILD ?>
+              <File Source="$(var.BINARY_DIR)\$(var.BUILD_TYPE)\pkcs11-spy.dll" />
+            <?else ?>
+              <File Source="$(var.SOURCE_DIR)\src\pkcs11\pkcs11-spy.dll" />
+            <?endif ?>
             <RegistryKey Root="HKLM" Key="Software\[Manufacturer]\PKCS11-Spy">
               <RegistryValue Type="string" Name="Module" Value="[INSTALLDIR_PKCS11]opensc-pkcs11.dll" />
               <RegistryValue Type="string" Name="Output" Value="%TEMP%\pkcs11-spy.log" />
@@ -211,17 +236,27 @@
         <File Id="zlib1.dll" Source="$(var.zlib)\zlib1.dll" />
       <?endif?>
       <?ifdef OpenSSL ?>
-        <File Id="smm_local.dll" Source="$(var.SOURCE_DIR)\src\smm\smm-local.dll" />
+        <?ifdef CMAKE_BUILD ?>
+          <File Id="smm_local.dll" Source="$(var.BINARY_DIR)\$(var.BUILD_TYPE)\smm-local.dll" />
+        <?else ?>
+          <File Id="smm_local.dll" Source="$(var.SOURCE_DIR)\src\smm\smm-local.dll" />
+        <?endif ?>
       <?endif?>
-      <File Id="opensc.dll" Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" />
-      <File Id="opensc_notify.exe" Source="$(var.SOURCE_DIR)\src\tools\opensc-notify.exe" />
-      <File Id="piv_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\piv-tool.exe" />
-      <File Id="pkcs11_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs11-tool.exe" />
-      <File Id="pkcs11_register.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs11-register.exe" />
-      <File Id="pkcs15_crypt.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-crypt.exe" />
-      <File Id="pkcs15_init.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-init.exe" />
-      <File Id="pkcs15_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-tool.exe" />
-      <File Id="opensc_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\opensc-tool.exe" />
+      <?ifdef CMAKE_BUILD ?>
+        <File Id="opensc.dll" Source="$(var.BINARY_DIR)\$(var.BUILD_TYPE)\opensc.dll" />
+        <File Id="opensc_notify.exe" Source="$(var.BINARY_DIR)\$(var.BUILD_TYPE)\opensc-notify.exe" />
+        <File Id="opensc_tool.exe" Source="$(var.BINARY_DIR)\$(var.BUILD_TYPE)\opensc-tool.exe" />
+      <?else ?>
+        <File Id="opensc.dll" Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" />
+        <File Id="opensc_notify.exe" Source="$(var.SOURCE_DIR)\src\tools\opensc-notify.exe" />
+        <File Id="piv_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\piv-tool.exe" />
+        <File Id="pkcs11_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs11-tool.exe" />
+        <File Id="pkcs11_register.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs11-register.exe" />
+        <File Id="pkcs15_crypt.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-crypt.exe" />
+        <File Id="pkcs15_init.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-init.exe" />
+        <File Id="pkcs15_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-tool.exe" />
+        <File Id="opensc_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\opensc-tool.exe" />
+      <?endif ?>
     </ComponentGroup>
 
 <?ifdef OpenSSL ?>

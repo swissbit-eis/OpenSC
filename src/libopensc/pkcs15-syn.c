@@ -36,6 +36,7 @@
 #include "pkcs15-emulator-filter.h"
 
 // clang-format off
+#ifndef ONLY_PIV
 struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "openpgp",	sc_pkcs15emu_openpgp_init_ex	},
 	{ "starcert",	sc_pkcs15emu_starcert_init_ex	},
@@ -72,6 +73,16 @@ struct sc_pkcs15_emulator_handler old_emulators[] = {
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
 	{ NULL, NULL }
 };
+#else
+struct sc_pkcs15_emulator_handler builtin_emulators[] = {
+	{ "PIV-II",     sc_pkcs15emu_piv_init_ex	},
+	{ NULL, NULL }
+};
+
+struct sc_pkcs15_emulator_handler old_emulators[] = {
+	{ NULL, NULL }
+};
+#endif
 // clang-format on
 
 static int parse_emu_block(sc_pkcs15_card_t *, struct sc_aid *, scconf_block *);

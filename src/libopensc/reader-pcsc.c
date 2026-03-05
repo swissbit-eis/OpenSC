@@ -549,10 +549,15 @@ static int check_forced_protocol(sc_reader_t *reader, DWORD *protocol)
 		memset(&card, 0, sizeof card);
 		card.ctx = reader->ctx;
 		card.atr = reader->atr;
+#ifdef ONLY_PIV
+		*protocol = SCARD_PROTOCOL_T1;
+		forced = 1;
+#else
 		if (0 <= _sc_match_atr(&card, sc_hsm_atrs, NULL)) {
 			*protocol = SCARD_PROTOCOL_T1;
 			forced = 1;
 		}
+#endif
 	}
 
 	return forced;
