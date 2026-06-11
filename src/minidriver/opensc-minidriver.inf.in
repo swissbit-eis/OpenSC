@@ -26,18 +26,17 @@ PnpLockdown=1
 %CardDeviceName%=Minidriver32_61_Install,SCFILTER\CID_00640181010c829000
 
 [SourceDisksFiles]
-%SmartCardCardModule%=1
-%SmartCardCardModule64%=1
-%OpenSCLibrary%=1
+opensc-minidriver.dll=1
+opensc.dll=1
 
 [SourceDisksNames]
 1 = %MediaDescription%
 
 [Minidriver64_Install.NT]
-CopyFiles=amd64_CopyFiles
-CopyFiles=wow64_CopyFiles
+CopyFiles=amd64_CopyFiles,wow64_CopyFiles
 
 [Minidriver64_61_Install.NT]
+CopyFiles=amd64_CopyFiles,wow64_CopyFiles
 Include=umpass.inf
 Needs=UmPass
 
@@ -54,6 +53,7 @@ Include=umpass.inf
 Needs=UmPass.Services
 
 [Minidriver32_61_Install.NT]
+CopyFiles=x86_CopyFiles
 Include=umpass.inf
 Needs=UmPass
 
@@ -90,16 +90,19 @@ Include=umpass.inf
 Needs=UmPass.Interfaces
 
 [amd64_CopyFiles]
-;%SmartCardCardModule%,%SmartCardCardModule64%
+opensc-minidriver.dll
+opensc.dll
 
 [x86_CopyFiles]
-;%SmartCardCardModule%
+opensc-minidriver.dll
+opensc.dll
 
 [arm64_CopyFiles]
-;%SmartCardCardModule%
+opensc-minidriver.dll
+opensc.dll
 
 [wow64_CopyFiles]
-;%SmartCardCardModule64%
+opensc-minidriver.dll
 
 [DestinationDirs]
 amd64_CopyFiles=10,system32
@@ -113,6 +116,3 @@ arm64_CopyFiles=10,system32
 ProviderName ="Swissbit AG"
 MediaDescription="OpenSC Smart Card Minidriver Installation Disk"
 CardDeviceName="OpenSC Minidriver"
-SmartCardCardModule="opensc-minidriver.dll"
-SmartCardCardModule64="opensc-minidriver.dll"
-OpenSCLibrary="opensc.dll"
