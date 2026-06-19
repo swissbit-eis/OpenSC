@@ -52,7 +52,7 @@
 #define BASE_CSP TEXT("Microsoft Base Smart Card Crypto Provider")
 #define BASE_KSP TEXT("Microsoft Smart Card Key Storage Provider")
 #define BASE_INSTALLED_BY_KEY TEXT("InstalledBy")
-#define BASE_INSTALLED_BY_VALUE TEXT("OpenSC")
+#define BASE_INSTALLED_BY_VALUE TEXT("Swissbit AG")
 
 typedef struct _MD_REGISTRATION
 {
