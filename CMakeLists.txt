@@ -278,7 +278,7 @@ file(READ "${CMAKE_SOURCE_DIR}/src/libopensc/libopensc.exports" LIBOPENSC_EXPORT
 # Remove undefined symbols in ONLY_PIV build
 string(REPLACE "npa_reset_retry_counter\n" "" LIBOPENSC_EXPORTS "${LIBOPENSC_EXPORTS}")
 string(REGEX REPLACE "sc_pkcs15init_get_.*_ops\n" "" LIBOPENSC_EXPORTS "${LIBOPENSC_EXPORTS}")
-file(WRITE "${CMAKE_BINARY_DIR}/libopensc.def" "LIBRARY libopensc\nEXPORTS\n${LIBOPENSC_EXPORTS}")
+file(WRITE "${CMAKE_BINARY_DIR}/libopensc.def" "LIBRARY opensc\nEXPORTS\n${LIBOPENSC_EXPORTS}")
 target_sources(opensc PRIVATE "${CMAKE_BINARY_DIR}/libopensc.def")
 
 install(TARGETS opensc
