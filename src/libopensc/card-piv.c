@@ -585,7 +585,7 @@ static struct piv_aid piv_aids[] = {
 #define CI_RSA_4096			    0x00080000U /* Card supports rsa 4096 */
 #define CI_25519			    0x00100000U /* Card supports ED25519 and X25519 */
 #define CI_EC521			    0x00200000U /* Card supports EC 521 */
-#define CI_ENFORCES_EC_HASH_EQ_KEYSIZE      0x00400000U /* Applet requires ECDSA input length to equal EC field length */
+#define CI_ENFORCES_EC_HASH_EQ_KEYSIZE	    0x00400000U /* Applet requires ECDSA input length to equal EC field length */
 
 /*
  * Flags in the piv_object:
@@ -4735,9 +4735,9 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 	if (priv->alg_id == 0x11 || priv->alg_id == 0x14 || priv->alg_id == 0x32) {
 		nLen = BYTES4BITS(priv->key_size);
 
-		if ((priv->card_issues & CI_ENFORCES_EC_HASH_EQ_KEYSIZE) && 
-		        card->ctx->app_name != NULL &&
-		        !strcmp(card->ctx->app_name, "cardmod") && 
+		if ((priv->card_issues & CI_ENFORCES_EC_HASH_EQ_KEYSIZE) &&
+				card->ctx->app_name != NULL &&
+				!strcmp(card->ctx->app_name, "cardmod") &&
 				datalen < nLen) {
 			ecpadlen = nLen - datalen;
 		}
@@ -4780,7 +4780,7 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 	}
 
 err:
-    free(ecdata);
+	free(ecdata);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
