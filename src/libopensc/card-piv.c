@@ -585,6 +585,7 @@ static struct piv_aid piv_aids[] = {
 #define CI_RSA_4096			    0x00080000U /* Card supports rsa 4096 */
 #define CI_25519			    0x00100000U /* Card supports ED25519 and X25519 */
 #define CI_EC521			    0x00200000U /* Card supports EC 521 */
+#define CI_ENFORCES_EC_HASH_EQ_KEYSIZE	    0x00400000U /* Applet requires ECDSA input length to equal EC field length */
 
 /*
  * Flags in the piv_object:
@@ -4717,6 +4718,9 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 	int r;
+	u8 *ecdata = NULL;
+	size_t ecdatalen = 0;
+	size_t ecpadlen = 0;
 	size_t nLen;
 	u8 rbuf[165]; /* For EC conversions  512 will fit */
 
@@ -4730,6 +4734,22 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 
 	if (priv->alg_id == 0x11 || priv->alg_id == 0x14 || priv->alg_id == 0x32) {
 		nLen = BYTES4BITS(priv->key_size);
+
+		if ((priv->card_issues & CI_ENFORCES_EC_HASH_EQ_KEYSIZE) &&
+				card->ctx->app_name != NULL &&
+				!strcmp(card->ctx->app_name, "cardmod") &&
+				datalen < nLen) {
+			ecpadlen = nLen - datalen;
+		}
+
+		ecdatalen = datalen + ecpadlen;
+		ecdata = calloc(ecdatalen, sizeof(*ecdata));
+		if (ecdata == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+		memcpy(ecdata + ecpadlen, data, datalen);
+
 		if (outlen < 2*nLen) {
 			sc_log(card->ctx,
 					" output too small for EC signature %"SC_FORMAT_LEN_SIZE_T"u < %"SC_FORMAT_LEN_SIZE_T"u",
@@ -4738,7 +4758,7 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 			goto err;
 		}
 
-		r = piv_validate_general_authentication(card, data, datalen, rbuf, sizeof rbuf);
+		r = piv_validate_general_authentication(card, ecdata, ecdatalen, rbuf, sizeof rbuf);
 		if (r < 0)
 			goto err;
 
@@ -4760,6 +4780,7 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 	}
 
 err:
+	free(ecdata);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
@@ -5820,7 +5841,7 @@ static int piv_match_card_continued(sc_card_t *card)
 			break;
 
 		case SC_CARD_TYPE_PIV_II_SWISSBIT2:
-			priv->card_issues |= 0; /* could add others here */
+			priv->card_issues |= CI_ENFORCES_EC_HASH_EQ_KEYSIZE;
 			if (priv->swissbit_version >= 0x00010200)
 				priv->card_issues |= CI_RSA_4096 | CI_EC521;
 			break;
